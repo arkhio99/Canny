@@ -79,9 +79,15 @@
             // 
             // MatrixSizeNUD
             // 
+            this.MatrixSizeNUD.ImeMode = System.Windows.Forms.ImeMode.NoControl;
+            this.MatrixSizeNUD.Increment = new decimal(new int[] {
+            2,
+            0,
+            0,
+            0});
             this.MatrixSizeNUD.Location = new System.Drawing.Point(182, 12);
             this.MatrixSizeNUD.Maximum = new decimal(new int[] {
-            10,
+            11,
             0,
             0,
             0});
