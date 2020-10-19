@@ -40,20 +40,14 @@ namespace Canny
 
         public Bitmap Process(SmoothMatrixType type, int size)
         {
-            var resGrad = originalPic
-               // .GetBWPicture()
-               // .SmoothPicture(type, size)
+            var result = originalPic
+                .GetBWPicture()
+                .SmoothBWPicture(type, size)
                 .FindGradients()
-                .SuppressMaximums();
-
-            Bitmap result = new Bitmap(resGrad.GetLength(1), resGrad.GetLength(0));
-            for (int i = 0; i < resGrad.GetLength(0); i++)
-            {
-                for (int j = 0; j < resGrad.GetLength(1); j++)
-                {
-                    result.SetPixel(j, i, GradientToColor(resGrad[i, j]));
-                }
-            }
+                .SuppressMaximums()
+                .BlackEdge(size / 2 + 1)
+                .Filtering()
+                .ToBitmap();
 
             return result;
         }
