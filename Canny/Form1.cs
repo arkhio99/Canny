@@ -30,6 +30,7 @@ namespace Canny
         {
             originalPicBox.Refresh();
             resultPicBox.Refresh();
+            StateLbl.Refresh();
         }
 
         public Color GradientToColor(GradientVector gv)
@@ -38,18 +39,54 @@ namespace Canny
             return Color.FromArgb(255, lambda, lambda, lambda);
         }
 
-        public Bitmap Process(SmoothMatrixType type, int size)
+        public Bitmap CannyProcessing(SmoothMatrixType type, int size)
         {
-            var result = originalPic
-                .GetBWPicture()
-                .SmoothBWPicture(type, size)
-                .FindGradients()
-                .SuppressMaximums()
-                .BlackEdge(size / 2 + 1)
-                .Filtering()
-                .ToBitmap();
+            Invoke(new Action(() => StateLbl.Text = "Начато преобразование"));
+            var bitmap = originalPic.GetBWPicture();
+            Invoke(new Action(() => 
+            {
+                StateLbl.Text = "Получено чернобелое изображение";
+                resultPicBox.Image = bitmap;
+                UpdateForm();
+            }));
+            
+            var smoothedBWPicture = bitmap.SmoothBWPicture(type, size);
+            Invoke(new Action(() => 
+            {
+                StateLbl.Text = "Получено размытое изображение";
+                resultPic = bitmap;
+                UpdateForm();
+            }));
 
-            return result;
+            var gradients = smoothedBWPicture.FindGradients();
+            Invoke(new Action(() => 
+            {
+                StateLbl.Text = "Найдены градиенты";
+                StateLbl.Refresh();
+            }));
+
+            var gradientsWithSuppressedMaximums = gradients.SuppressMaximums();
+            Invoke(new Action(() => 
+            {
+                StateLbl.Text = "Удалены немаксимумы";
+                StateLbl.Refresh();
+            }));
+
+            var cuttedGradients = gradientsWithSuppressedMaximums.BlackEdge(size / 2 + 1);
+            Invoke(new Action(() => 
+            {
+                StateLbl.Text = "Закрашены края";
+                StateLbl.Refresh();
+            }));
+                
+            var filteredGradients = cuttedGradients.Filtering();
+            Invoke(new Action(() => 
+            {
+                StateLbl.Text = "Произведена фильтрация. Готово!";
+                StateLbl.Refresh();
+            }));
+
+            return filteredGradients.ToBitmap();
         }
 
         public void OpenFile()
@@ -77,10 +114,13 @@ namespace Canny
 
         private void ExecuteBtn_Click(object sender, EventArgs e)
         {
-            resultPic = Process((SmoothMatrixType)SmoothTypeListBox.SelectedItem, (int)MatrixSizeNUD.Value);
-            resultPic.Save(path + "res.bmp");
-            resultPicBox.Image = resultPic;
-            UpdateForm();
+            Invoke(new Action(() => 
+            {
+                resultPic = CannyProcessing((SmoothMatrixType)SmoothTypeListBox.SelectedItem, (int)MatrixSizeNUD.Value);
+                resultPic.Save(path + "res.bmp");
+                resultPicBox.Image = resultPic;
+                UpdateForm();
+            }));
         }
     }
 }

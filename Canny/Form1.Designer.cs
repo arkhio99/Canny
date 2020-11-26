@@ -36,9 +36,9 @@
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
-            this.progressBar1 = new System.Windows.Forms.ProgressBar();
             this.SmoothTypeListBox = new System.Windows.Forms.ComboBox();
             this.ExecuteBtn = new System.Windows.Forms.Button();
+            this.StateLbl = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.originalPicBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.resultPicBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.MatrixSizeNUD)).BeginInit();
@@ -131,13 +131,6 @@
             this.statusStrip1.TabIndex = 6;
             this.statusStrip1.Text = "statusStrip1";
             // 
-            // progressBar1
-            // 
-            this.progressBar1.Location = new System.Drawing.Point(12, 427);
-            this.progressBar1.Name = "progressBar1";
-            this.progressBar1.Size = new System.Drawing.Size(164, 23);
-            this.progressBar1.TabIndex = 7;
-            // 
             // SmoothTypeListBox
             // 
             this.SmoothTypeListBox.FormattingEnabled = true;
@@ -156,14 +149,23 @@
             this.ExecuteBtn.UseVisualStyleBackColor = true;
             this.ExecuteBtn.Click += new System.EventHandler(this.ExecuteBtn_Click);
             // 
+            // StateLbl
+            // 
+            this.StateLbl.AutoSize = true;
+            this.StateLbl.Location = new System.Drawing.Point(12, 432);
+            this.StateLbl.Name = "StateLbl";
+            this.StateLbl.Size = new System.Drawing.Size(66, 15);
+            this.StateLbl.TabIndex = 10;
+            this.StateLbl.Text = "Состояние";
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 450);
+            this.Controls.Add(this.StateLbl);
             this.Controls.Add(this.ExecuteBtn);
             this.Controls.Add(this.SmoothTypeListBox);
-            this.Controls.Add(this.progressBar1);
             this.Controls.Add(this.statusStrip1);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.label1);
@@ -191,9 +193,9 @@
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.StatusStrip statusStrip1;
-        private System.Windows.Forms.ProgressBar progressBar1;
         private System.Windows.Forms.ComboBox SmoothTypeListBox;
         private System.Windows.Forms.Button ExecuteBtn;
+        private System.Windows.Forms.Label StateLbl;
     }
 }
 

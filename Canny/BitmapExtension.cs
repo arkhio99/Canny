@@ -222,6 +222,25 @@ namespace Canny
 
             return pic;
         }
+
+        public static double[,] Integrate(this Bitmap pic)
+        {
+            double[,] integratedArray = new double[pic.Height, pic.Width];
+            integratedArray[0, 0] = pic.GetPixel(0, 0).R;
+            for (int i = 1; i < integratedArray.GetLength(0); i++)
+            {
+                for (int j = 1; j < integratedArray.GetLength(1); j++)
+                {
+                    if (i == 0 || j == 0)
+                    {
+                        integratedArray[i, j] = pic.GetPixel(i, j).R;
+                    }
+                    integratedArray[i, j] = pic.GetPixel(i, j).R - integratedArray[i - 1, j - 1] + integratedArray[i, j - 1] + integratedArray[i - 1, j];
+                }
+            }
+
+            return integratedArray;
+        }
     }
 
     /// <summary>
@@ -238,4 +257,6 @@ namespace Canny
         /// </summary>
         Gauss
     }
+
+    
 }

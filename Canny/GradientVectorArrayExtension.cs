@@ -131,7 +131,8 @@ namespace Canny
         {
             double maxInVecs = vecs.FindMaximum();
             double minInVecs = vecs.FindMinimum();
-            int howIntervals = 7;
+
+            int howIntervals = 1 + (int)(3.32 * Math.Log10(vecs.Length));
             double intervalH = (maxInVecs - minInVecs) / howIntervals;
             double[] intervals = new double[howIntervals];
             double[] rightEdgeOfInterval = new double[howIntervals];
@@ -165,7 +166,7 @@ namespace Canny
             double res = 0;
             for (int i = howIntervals - 1; i >= 0 ; i--)
             {
-                if (sum + intervals[i] < vecs.Length / 2)
+                if (sum + intervals[i] < vecs.Length / (intervalH/*Math.Log(vecs.Length)*/) )
                 {
                     sum += intervals[i];
                     res = rightEdgeOfInterval[i];
