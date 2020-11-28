@@ -42,7 +42,7 @@ namespace Canny
         public Bitmap CannyProcessing(SmoothMatrixType type, int size)
         {
             Invoke(new Action(() => StateLbl.Text = "Начато преобразование"));
-            var bitmap = originalPic.GetBWPicture();
+            var bitmap = new Bitmap(originalPic, 64, 64).GetBWPicture();
             Invoke(new Action(() => 
             {
                 StateLbl.Text = "Получено чернобелое изображение";
@@ -114,12 +114,14 @@ namespace Canny
 
         private void ExecuteBtn_Click(object sender, EventArgs e)
         {
-            Invoke(new Action(() => 
+            var type = (SmoothMatrixType)SmoothTypeListBox.SelectedItem;
+            var size = (int)MatrixSizeNUD.Value;
+            Task.Run(new Action(() => 
             {
-                resultPic = CannyProcessing((SmoothMatrixType)SmoothTypeListBox.SelectedItem, (int)MatrixSizeNUD.Value);
+                resultPic = CannyProcessing(type, size);
                 resultPic.Save(path + "res.bmp");
                 resultPicBox.Image = resultPic;
-                UpdateForm();
+                Invoke(new Action( () => UpdateForm()));
             }));
         }
     }
