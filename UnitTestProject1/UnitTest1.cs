@@ -40,7 +40,8 @@ namespace UnitTestProject1
                     LayerType.Pool,
                     LayerType.Convolution,
                     LayerType.Activation,
-                    LayerType.Pool,LayerType.Convolution,
+                    LayerType.Pool,
+                    LayerType.Convolution,
                     LayerType.Activation,
                     LayerType.Pool,
                 }),
@@ -48,7 +49,7 @@ namespace UnitTestProject1
                 2);
             
 
-            cnn.Save("savecnn.json");
+            cnn.Save("savecnn1.json");
         }
 
         [TestMethod]
@@ -163,7 +164,7 @@ namespace UnitTestProject1
             cnn1.Save("savecnn1.json");
             double[] inp = new double[] { 1, 2 };
             var expected = cnn1.ProceessOnPerceptron(inp);
-            var cnn2 = new CNNet("savecnn.json");
+            var cnn2 = new CNNet("savecnn1.json");
             var actual = cnn2.ProceessOnPerceptron(inp);
             foreach (var val in actual)
             {
@@ -179,13 +180,25 @@ namespace UnitTestProject1
         [TestMethod]
         public void Deltas()
         {
+            var input = new double[] { 0, 1 };
             var ideal = new double[] { 1.5 };
-            var cnn = new CNNet("savecnn.json");
-            var output = cnn.ProceessOnPerceptron(new double[] {0, 1});
+            //var cnn = new CNNet("savecnn.json");
+            var cnn = new CNNet(ActivationFunc.LeakyReLU,
+                new int[] { 2, 2 },
+                1,
+                1,
+                2,
+                1,
+                1);
+            var output = cnn.ProceessOnPerceptron(input);
             var loss = cnn.LossFunction(ideal);
             System.Console.WriteLine(loss);
-            cnn.BackPropagation(ideal);
-            output = cnn.ProceessOnPerceptron(new double[] {0, 1});
+            cnn.BackPropagation(input, ideal);
+            output = cnn.ProceessOnPerceptron(input);
+            loss = cnn.LossFunction(ideal);
+            System.Console.WriteLine(loss);
+            cnn.BackPropagation(input, ideal);
+            output = cnn.ProceessOnPerceptron(input);
             loss = cnn.LossFunction(ideal);
             System.Console.WriteLine(loss);
         }

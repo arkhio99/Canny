@@ -97,6 +97,8 @@ namespace CNN
         public int SizeOfPooling { get => _sizeOfPooling; }
         private readonly int _sizeOfPooling;
 
+        private double[,] _inputs;
+
         /// <summary>
         /// Конструктор объекта свёрточной нейросети.
         /// </summary>
@@ -104,17 +106,17 @@ namespace CNN
         /// <param name="neuronsPerHiddenLayer">Массив, где индекс - номер скрытого слоя, а значение - количество нейронов на данной слое.</param>
         /// <param name="filters">Список фильтров.</param>
         /// <param name="howInputs">Количество входящих параметров.</param>
-        /// <param name="howOutput">Количество исходящих результатов.</param>
+        /// <param name="howOutputs">Количество исходящих результатов.</param>
         /// <param name="sizeOfPooling">Размер ядра пуллинга.</param>
-        public CNNet(ActivationFunc activation, int[] neuronsPerHiddenLayer, int howFilters, int sizeOfFilters, int howInputs, int howOutput, int sizeOfPooling)
+        public CNNet(ActivationFunc activation, int[] neuronsPerHiddenLayer, int howFilters, int sizeOfFilters, int howInputs, int howOutputs, int sizeOfPooling)
         {
             ActivationFuncType = activation;
             switch (activation)
             {
                 case ActivationFunc.LeakyReLU:
                 {
-                    _activation = (x) => Math.Max(0.01 * x, x);
-                    _differencialActivation = (x) => x > 0.01 * x ? 1 : 0.01;
+                    _activation = (x) => Math.Max(0.1 * x, x);
+                    _differencialActivation = (x) => x > 0.1 * x ? 1 : 0.1;
                     break;
                 }
             }
@@ -136,26 +138,31 @@ namespace CNN
 
             _HOlayers = new List<Neuron[]>(neuronsPerHiddenLayer.Length);
             _connections = new List<double[,]>(neuronsPerHiddenLayer.Length);
-            _deltaConnections = new List<double[,]>(neuronsPerHiddenLayer.Length);
-            // TODO доделать
             _HOlayers.Add(new Neuron[neuronsPerHiddenLayer[0]]);
             for (int i = 1; i < neuronsPerHiddenLayer.Length; i++)
             {
-                var temp = new double[neuronsPerHiddenLayer[i -1], neuronsPerHiddenLayer[i]];
+                var temp = new double[neuronsPerHiddenLayer[i - 1], neuronsPerHiddenLayer[i]];
                 RandomiseArray(ref temp);
                 _connections.Add(temp);
-
-                var tempDeltas = new double[neuronsPerHiddenLayer[i -1], neuronsPerHiddenLayer[i]];
-                FillWithZeros(ref tempDeltas);
-                _deltaConnections.Add(tempDeltas);
 
                 _HOlayers.Add(new Neuron[neuronsPerHiddenLayer[i]]);
             }
             
-            var lastConnections = new double[neuronsPerHiddenLayer[^1], howOutput];
+            var lastConnections = new double[neuronsPerHiddenLayer[^1], howOutputs];
             RandomiseArray(ref lastConnections);
             _connections.Add(lastConnections);
-            _HOlayers.Add(new Neuron[howOutput]);
+            _HOlayers.Add(new Neuron[howOutputs]);
+
+            _deltaConnections = new List<double[,]>(neuronsPerHiddenLayer.Length + 1);
+            var temp1 = new double[_connectionsBetweenInputAndLayer.GetLength(0), _connectionsBetweenInputAndLayer.GetLength(1)];
+            FillWithZeros(ref temp1);
+            _deltaConnections.Add(temp1);
+            for (int l = 0; l < _connections.Count; l++)
+            {
+                var temp = new double[_connections[l].GetLength(0), _connections[l].GetLength(1)];
+                FillWithZeros(ref temp);
+                _deltaConnections.Add(temp);
+            }
         }
 
         /// <summary>
@@ -172,25 +179,30 @@ namespace CNN
             {
                 case ActivationFunc.LeakyReLU:
                 {
-                    _activation = (x) => Math.Max(0.01 * x, x);
-                    _differencialActivation = (x) => x > 0.01 * x ? 1 : 0.01;
+                    _activation = (x) => Math.Max(0.1 * x, x);
+                    _differencialActivation = (x) => x > 0.1 * x ? 1 : 0.1;
                     break;
                 }
             }
 
             _HOlayers = obj.HOLayers;
             _connections = obj.Connections;
-            _deltaConnections = new List<double[,]> (_connections.Count);
-            for (int i = 0; i < _deltaConnections.Count; i++)
-            {
-                var temp = new double[]
-                _deltaConnections
-            }
 
             _howInputs = obj.HowInputs;
             _connectionsBetweenInputAndLayer = obj.ConnectionsBetweenIAndL;
             _filters = obj.Filters;
             _sizeOfPooling = obj.SizeOfPooling;
+
+            _deltaConnections = new List<double[,]>(CountOfNeuronsPerLayer.Length);
+            var temp1 = new double[_connectionsBetweenInputAndLayer.GetLength(0), _connectionsBetweenInputAndLayer.GetLength(1)];
+            FillWithZeros(ref temp1);
+            _deltaConnections.Add(temp1);
+            for (int l = 0; l < _connections.Count; l++)
+            {
+                var temp = new double[_connections[l].GetLength(0), _connections[l].GetLength(1)];
+                FillWithZeros(ref temp);
+                _deltaConnections.Add(temp);
+            }
         }
 
         /// <summary>
@@ -466,7 +478,6 @@ namespace CNN
             return res;
         }
 
-
         public List<double[]> GetDeltas(double[] ideal)
         {
             // создадим список дельт, где каждый массив содержит дельты для нейронов для определённых слоёв.
@@ -504,23 +515,23 @@ namespace CNN
             return deltas;
         }
 
-        private void SetDeltaConnections(List<double[]> deltas)
+        private void SetDeltaConnections(double[] inputs, List<double[]> deltas)
         {
             for (int start = 0; start < _connectionsBetweenInputAndLayer.GetLength(0); start++)
             {
                 for (int end = 0; end < _connectionsBetweenInputAndLayer.GetLength(1); end++)
                 {
-                    _deltaConnections[0][start, end] = _eps * deltas[0][end] * _HOlayers[0][start].Output + _alpha * _deltaConnections[0][start, end];
+                    _deltaConnections[0][start, end] = _eps * deltas[0][end] * inputs[start] + _alpha * _deltaConnections[0][start, end];
                 }
             }
 
-            for (int l = 0; l < _HOlayers.Count; l++)
+            for (int l = 1; l < _HOlayers.Count; l++)
             {
-                for (int start = 0; start < _connectionsBetweenInputAndLayer.GetLength(0); start++)
+                for (int start = 0; start < _deltaConnections[l].GetLength(0); start++)
                 {
-                    for (int end = 0; end < _connectionsBetweenInputAndLayer.GetLength(1); end++)
+                    for (int end = 0; end < _deltaConnections[l].GetLength(1); end++)
                     {
-                        _deltaConnections[l][start, end] = _eps * deltas[l][end] * _HOlayers[l][start].Output + _alpha * _deltaConnections[l][start, end];
+                        _deltaConnections[l][start, end] = _eps * deltas[l][end] * _HOlayers[l - 1][start].Output + _alpha * _deltaConnections[l][start, end];
                     }
                 }
             }
@@ -532,28 +543,30 @@ namespace CNN
             {
                 for (int end = 0; end < _connectionsBetweenInputAndLayer.GetLength(1); end++)
                 {
-                    _connections[0][start,end] += _deltaConnections[0][start, end];
+                    _connectionsBetweenInputAndLayer[start,end] += _deltaConnections[0][start, end];
                 }
             }
 
-            for (int l = 0; l < _HOlayers.Count; l++)
+            for (int l = 0; l < _connections.Count; l++)
             {
-                for (int start = 0; start < _connectionsBetweenInputAndLayer.GetLength(0); start++)
+                for (int start = 0; start < _connections[l].GetLength(0); start++)
                 {
-                    for (int end = 0; end < _connectionsBetweenInputAndLayer.GetLength(1); end++)
+                    for (int end = 0; end < _connections[l].GetLength(1); end++)
                     {
-                        _connections[l][start,end] += _deltaConnections[l][start, end];;
+                        _connections[l][start,end] += _deltaConnections[l + 1][start, end];;
                     }
                 }
             }
         }
         
-        public void BackPropagation(double[] idealOutputs)
+        public void BackPropagation(double[] inputs,double[] idealOutputs)
         {
             var deltas = GetDeltas(idealOutputs);
-            SetDeltaConnections(deltas);
+            SetDeltaConnections(inputs, deltas);
             SumDeltaConnectionsWithConnection();
         }
+
+
 
         private double[] CrpToInputs(List<double[,]> inits)
         {
