@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using System.Linq;
 using System.IO;
+using System.Drawing;
+using BitmapLibrary;
 
 namespace CNN
 {
@@ -35,6 +37,12 @@ namespace CNN
         public int SizeOfPooling { get; set; }
     }
 
+    public class NNetData
+    {
+        public double[] ideal;
+        public Bitmap picture;
+    }
+
     public class CNNet
     {
         /// <summary>
@@ -60,7 +68,7 @@ namespace CNN
         /// Скорость обучения.
         /// </summary>
         public double Alpha { get => _alpha; set  => _alpha = value; }
-        private double _alpha = 0.3;
+        private double _alpha = 0;
 
         /// <summary>
         /// Связи между скрытыми и выходным слоями
@@ -385,7 +393,7 @@ namespace CNN
             {
                 for (int j = 0; j < array.GetLength(1); j++)
                 {
-                    array[i,j] = random.NextDouble() * (random.Next(1) == 1 ? 1 : -1);
+                    array[i,j] = random.NextDouble();
                 }
             }
         }
@@ -434,28 +442,28 @@ namespace CNN
                 throw new ArgumentException($"Длина {nameof(inputs)} не совпадает с длиной, заданной в сети.");
             }
 
-            for (int n = 0; n < _HOlayers[0].Length; n++)
+            for (int end = 0; end < _HOlayers[0].Length; end++)
             {
                 var temp = .0;
-                for (int x = 0; x < inputs.GetLength(0); x++)
+                for (int start = 0; start < inputs.Length; start++)
                 {
-                    temp += inputs[x] * _connectionsBetweenInputAndLayer[x, n];
+                    temp += inputs[start] * _connectionsBetweenInputAndLayer[start, end];
                 }
 
-                _HOlayers[0][n] = new Neuron { Input = temp, Output = _activation(temp) };
+                _HOlayers[0][end] = new Neuron { Input = temp, Output = _activation(temp) };
             }
 
             for (int l = 1; l < _HOlayers.Count; l++)
             {
-                for (int n = 0; n < _HOlayers[l].Length; n++)
+                for (int end = 0; end < _HOlayers[l].Length; end++)
                 {
                     var temp = .0;
-                    for (int x = 0; x < _HOlayers[l-1].GetLength(0); x++)
+                    for (int start = 0; start < _HOlayers[l-1].Length; start++)
                     {
-                        temp += _HOlayers[l-1][x].Output * _connections[l - 1][x, n];
+                        temp += _HOlayers[l-1][start].Output * _connections[l - 1][start, end];
                     }
 
-                    _HOlayers[l][n] = new Neuron { Input = temp, Output = _activation(temp) };
+                    _HOlayers[l][end] = new Neuron { Input = temp, Output = _activation(temp) };
                 }
             }
 
@@ -500,15 +508,15 @@ namespace CNN
             for (int l = deltas.Count - 2; l >= 0; l--)
             {
                 // для каждого нейрона на слое
-                for (int n = 0; n < deltas[l].Length; n++)
+                for (int start = 0; start < deltas[l].Length; start++)
                 {
                     double sum = 0;
-                    for (int i = 0; i < deltas[l + 1].Length; i++)
+                    for (int end = 0; end < deltas[l + 1].Length; end++)
                     {
-                        sum += _connections[l][n, i] * deltas[l + 1][i];
+                        sum += _connections[l][start, end] * deltas[l + 1][end];
                     }
 
-                    deltas[l][n] = _differencialActivation(_HOlayers[l][n].Input) * sum;
+                    deltas[l][start] = _differencialActivation(_HOlayers[l][start].Input) * sum;
                 }
             }
 
@@ -543,7 +551,7 @@ namespace CNN
             {
                 for (int end = 0; end < _connectionsBetweenInputAndLayer.GetLength(1); end++)
                 {
-                    _connectionsBetweenInputAndLayer[start,end] += _deltaConnections[0][start, end];
+                    _connectionsBetweenInputAndLayer[start,end] -= _deltaConnections[0][start, end];
                 }
             }
 
@@ -553,7 +561,7 @@ namespace CNN
                 {
                     for (int end = 0; end < _connections[l].GetLength(1); end++)
                     {
-                        _connections[l][start,end] += _deltaConnections[l + 1][start, end];;
+                        _connections[l][start,end] -= _deltaConnections[l + 1][start, end];;
                     }
                 }
             }
@@ -566,7 +574,38 @@ namespace CNN
             SumDeltaConnectionsWithConnection();
         }
 
+        public double[] Train(List<NNetData> trainingDatas, SmoothMatrixType type, int size, int epochs)
+        {
+            double[] loss = new double[Math.Min(trainingDatas.Count, epochs)];
+            for (int i = 0; i < trainingDatas.Count && i < epochs; i++)
+            {
+                var bitmap = new Bitmap(trainingDatas[i].picture, 32, 32).GetBWPicture();
+                var smoothedBWPicture = bitmap.SmoothBWPicture(type, size);
+                var gradients = smoothedBWPicture.FindGradients();
+                var gradientsWithSuppressedMaximums = gradients.SuppressMaximums();
+                var cuttedGradients = gradientsWithSuppressedMaximums.BlackEdge(size / 2 + 1);
+                var filteredGradients = cuttedGradients.Filtering();
 
+                var doubleViewOfPicture = new double[32, 32];
+                for (int y = 0; y < 32; y++)
+                {
+                    for (int x = 0; x < 32; x++)
+                    {
+                        doubleViewOfPicture[y, x] =  filteredGradients[y, x].Length;
+                    }
+                }
+
+                GetResults(doubleViewOfPicture);
+                
+                loss[i] = LossFunction(trainingDatas[i].ideal);
+                BackPropagation(CrpToInputs(new List<double[,]> { doubleViewOfPicture }), trainingDatas[i].ideal);
+                GetResults(doubleViewOfPicture);
+                
+                loss[i] = LossFunction(trainingDatas[i].ideal);
+            }
+
+            return loss;
+        }
 
         private double[] CrpToInputs(List<double[,]> inits)
         {
@@ -588,20 +627,12 @@ namespace CNN
 
         public double[] GetResults(double[,] init)
         {
-            if (init.Length != 64 * 64)
+            if (init.Length != 32*32)
             {
-                throw new ArgumentException("Init should be 64 * 64");
+                throw new ArgumentException("Init should be 32 * 32");
             }
 
-            var _1CRP = AfterOneCRPLayer(new List<double[,]> { init });
-
-            var _2CRP = AfterOneCRPLayer(_1CRP);
-
-            var _3CRP = AfterOneCRPLayer(_2CRP);
-
-            var inputsToPerceptron = CrpToInputs(_3CRP);
-
-            var outputs = ProceessOnPerceptron(inputsToPerceptron);
+            var outputs = ProceessOnPerceptron(CrpToInputs(new List<double[,]> { init }));
 
             return outputs;
         }

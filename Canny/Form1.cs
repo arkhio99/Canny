@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using BitmapLibrary;
 
 namespace Canny
 {
@@ -42,7 +43,7 @@ namespace Canny
         public Bitmap CannyProcessing(SmoothMatrixType type, int size)
         {
             Invoke(new Action(() => StateLbl.Text = "Начато преобразование"));
-            var bitmap = new Bitmap(originalPic, 64, 64).GetBWPicture();
+            var bitmap = new Bitmap(originalPic, 32, 32).GetBWPicture();
             Invoke(new Action(() => 
             {
                 StateLbl.Text = "Получено чернобелое изображение";

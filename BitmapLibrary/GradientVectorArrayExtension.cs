@@ -1,12 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.Globalization;
-using System.Text;
 
-namespace Canny
+namespace BitmapLibrary
 {
-    static class GradientVectorArrayExtension
+    public static class GradientVectorArrayExtension
     {
         /// <summary>
         /// Converts to Bitmap.

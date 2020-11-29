@@ -6,7 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Canny
+namespace BitmapLibrary
 {
     public static class BitmapExtension
     {

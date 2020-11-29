@@ -6,4 +6,9 @@
     <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\BitmapLibrary\BitmapLibrary.csproj" />
+    <ProjectReference Include="..\CNN\CNN.csproj" />
+  </ItemGroup>
+
 </Project>
