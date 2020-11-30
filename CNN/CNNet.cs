@@ -8,11 +8,11 @@ using BitmapLibrary;
 
 namespace CNN
 {
-    public class Neuron
-    {
-        public double Input { get; set; }
-        public double Output { get; set; }
-    }
+    //public class Neuron
+    //{
+    //    public double Input { get; set; }
+    //    public double Output { get; set; }
+    //}
 
     public enum ActivationFunc
     {
@@ -61,13 +61,13 @@ namespace CNN
         /// <summary>
         /// Коэффициент обучения.
         /// </summary>
-        public double Epsilon { get => _eps; set  => _eps = value; }
+        public double Epsilon { get => _eps; set => _eps = value; }
         private double _eps = 0.7;
 
         /// <summary>
         /// Скорость обучения.
         /// </summary>
-        public double Alpha { get => _alpha; set  => _alpha = value; }
+        public double Alpha { get => _alpha; set => _alpha = value; }
         private double _alpha = 0;
 
         /// <summary>
@@ -80,7 +80,7 @@ namespace CNN
         /// Дельты связей;
         /// </summary>
         private List<double[,]> _deltaConnections;
-        
+
         /// <summary>
         /// Количество входов.
         /// </summary>
@@ -91,7 +91,7 @@ namespace CNN
         /// Матрица связей между входным и первым скрытым слоем
         /// </summary>
         public double[,] ConnectionsBetweenIAndL { get => _connectionsBetweenInputAndLayer; }
-        private double[,] _connectionsBetweenInputAndLayer; 
+        private double[,] _connectionsBetweenInputAndLayer;
 
         /// <summary>
         /// Фильтры.
@@ -122,18 +122,18 @@ namespace CNN
             switch (activation)
             {
                 case ActivationFunc.LeakyReLU:
-                {
-                    _activation = (x) => Math.Max(0.1 * x, x);
-                    _differencialActivation = (x) => x > 0.1 * x ? 1 : 0.1;
-                    break;
-                }
+                    {
+                        _activation = (x) => Math.Max(0.1 * x, x);
+                        _differencialActivation = (x) => x > 0.1 * x ? 1 : 0.1;
+                        break;
+                    }
             }
 
 
             _filters = new List<double[,]>(howFilters);
             for (int i = 0; i < howFilters; i++)
             {
-                var temp = new double[sizeOfFilters,sizeOfFilters];
+                var temp = new double[sizeOfFilters, sizeOfFilters];
                 RandomiseArray(ref temp);
                 _filters.Add(temp);
             }
@@ -155,7 +155,7 @@ namespace CNN
 
                 _HOlayers.Add(new Neuron[neuronsPerHiddenLayer[i]]);
             }
-            
+
             var lastConnections = new double[neuronsPerHiddenLayer[^1], howOutputs];
             RandomiseArray(ref lastConnections);
             _connections.Add(lastConnections);
@@ -177,7 +177,7 @@ namespace CNN
         /// Конструктор объектов по JSON-файлу.
         /// </summary>
         /// <param name="path">Путь к JSON-файлу.</param>
-        public CNNet (string path)
+        public CNNet(string path)
         {
             var input = File.ReadAllText(path);
             var obj = JsonConvert.DeserializeObject<CNNetForReadJson>(input);
@@ -186,11 +186,11 @@ namespace CNN
             switch (ActivationFuncType)
             {
                 case ActivationFunc.LeakyReLU:
-                {
-                    _activation = (x) => Math.Max(0.1 * x, x);
-                    _differencialActivation = (x) => x > 0.1 * x ? 1 : 0.1;
-                    break;
-                }
+                    {
+                        _activation = (x) => Math.Max(0.1 * x, x);
+                        _differencialActivation = (x) => x > 0.1 * x ? 1 : 0.1;
+                        break;
+                    }
             }
 
             _HOlayers = obj.HOLayers;
@@ -234,7 +234,7 @@ namespace CNN
                 {
                     res[i + 1] = _HOlayers[i].Length;
                 }
-                 
+
                 return res;
             }
         }
@@ -258,7 +258,7 @@ namespace CNN
         public double[,] Convolute(double[,] init, double[,] filter)
         {
             var res = new double[init.GetLength(0) - filter.GetLength(0) / 2 - filter.GetLength(0) % 2, init.GetLength(1) - filter.GetLength(1) / 2 - filter.GetLength(1) % 2];
-            
+
             for (int y = 0; y < res.GetLength(0); y++)
             {
                 for (int x = 0; x < res.GetLength(1); x++)
@@ -307,9 +307,9 @@ namespace CNN
             var odd0 = init.GetLength(0) % _sizeOfPooling;
             var odd1 = init.GetLength(1) % _sizeOfPooling;
             var res = new double[init.GetLength(0) / _sizeOfPooling + (odd0 != 0 ? 1 : 0), init.GetLength(1) / _sizeOfPooling + (odd1 != 0 ? 1 : 0)];
-            for(int i = 0; i < init.GetLength(0) - odd0; i += _sizeOfPooling)
+            for (int i = 0; i < init.GetLength(0) - odd0; i += _sizeOfPooling)
             {
-                for (int j = 0; j < init.GetLength(1) - odd1 ; j += _sizeOfPooling)
+                for (int j = 0; j < init.GetLength(1) - odd1; j += _sizeOfPooling)
                 {
                     res[i / _sizeOfPooling, j / _sizeOfPooling] = MaxInSquare(init, i, j);
                 }
@@ -324,7 +324,7 @@ namespace CNN
             if (odd0 != 0)
             {
                 int i = init.GetLength(0) - _sizeOfPooling;
-                for (int j = 0; j < init.GetLength(1) - odd1 ; j += _sizeOfPooling)
+                for (int j = 0; j < init.GetLength(1) - odd1; j += _sizeOfPooling)
                 {
                     res[res.GetLength(0) - 1, j / _sizeOfPooling] = MaxInSquare(init, i, j);
                 }
@@ -353,7 +353,7 @@ namespace CNN
             {
                 for (int dj = 0; dj < _sizeOfPooling; dj++)
                 {
-                    temp = init[i+di, j+dj] > temp ? init[i+di, j+dj] : temp;
+                    temp = init[i + di, j + dj] > temp ? init[i + di, j + dj] : temp;
                 }
             }
 
@@ -393,7 +393,7 @@ namespace CNN
             {
                 for (int j = 0; j < array.GetLength(1); j++)
                 {
-                    array[i,j] = random.NextDouble();
+                    array[i, j] = random.Next() % 4 * random.NextDouble();
                 }
             }
         }
@@ -458,9 +458,10 @@ namespace CNN
                 for (int end = 0; end < _HOlayers[l].Length; end++)
                 {
                     var temp = .0;
-                    for (int start = 0; start < _HOlayers[l-1].Length; start++)
+                    for (int start = 0; start < _HOlayers[l - 1].Length; start++)
                     {
-                        temp += _HOlayers[l-1][start].Output * _connections[l - 1][start, end];
+                        double d = _HOlayers[l - 1][start].Output * _connections[l - 1][start, end];
+                        temp += _HOlayers[l - 1][start].Output * _connections[l - 1][start, end];
                     }
 
                     _HOlayers[l][end] = new Neuron { Input = temp, Output = _activation(temp) };
@@ -469,7 +470,7 @@ namespace CNN
 
             var output = _HOlayers[_HOlayers.Count - 1].Select(n => n.Output).ToArray();
 
-            return output;            
+            return output;
         }
 
         private List<double[,]> AfterOneCRPLayer(List<double[,]> inits)
@@ -513,7 +514,7 @@ namespace CNN
                     double sum = 0;
                     for (int end = 0; end < deltas[l + 1].Length; end++)
                     {
-                        sum += _connections[l][start, end] * deltas[l + 1][end];
+                        sum += _connections[l][start, end] * _eps * deltas[l + 1][end];
                     }
 
                     deltas[l][start] = _differencialActivation(_HOlayers[l][start].Input) * sum;
@@ -551,7 +552,7 @@ namespace CNN
             {
                 for (int end = 0; end < _connectionsBetweenInputAndLayer.GetLength(1); end++)
                 {
-                    _connectionsBetweenInputAndLayer[start,end] -= _deltaConnections[0][start, end];
+                    _connectionsBetweenInputAndLayer[start, end] += _deltaConnections[0][start, end];
                 }
             }
 
@@ -561,13 +562,13 @@ namespace CNN
                 {
                     for (int end = 0; end < _connections[l].GetLength(1); end++)
                     {
-                        _connections[l][start,end] -= _deltaConnections[l + 1][start, end];;
+                        _connections[l][start, end] += _deltaConnections[l + 1][start, end]; ;
                     }
                 }
             }
         }
-        
-        public void BackPropagation(double[] inputs,double[] idealOutputs)
+
+        public void BackPropagation(double[] inputs, double[] idealOutputs)
         {
             var deltas = GetDeltas(idealOutputs);
             SetDeltaConnections(inputs, deltas);
@@ -591,16 +592,16 @@ namespace CNN
                 {
                     for (int x = 0; x < 32; x++)
                     {
-                        doubleViewOfPicture[y, x] =  filteredGradients[y, x].Length;
+                        doubleViewOfPicture[y, x] = filteredGradients[y, x].Length;
                     }
                 }
 
                 GetResults(doubleViewOfPicture);
-                
+
                 loss[i] = LossFunction(trainingDatas[i].ideal);
                 BackPropagation(CrpToInputs(new List<double[,]> { doubleViewOfPicture }), trainingDatas[i].ideal);
                 GetResults(doubleViewOfPicture);
-                
+
                 loss[i] = LossFunction(trainingDatas[i].ideal);
             }
 
@@ -627,7 +628,7 @@ namespace CNN
 
         public double[] GetResults(double[,] init)
         {
-            if (init.Length != 32*32)
+            if (init.Length != 32 * 32)
             {
                 throw new ArgumentException("Init should be 32 * 32");
             }
