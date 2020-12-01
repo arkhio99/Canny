@@ -1,6 +1,8 @@
-﻿using Newtonsoft.Json;
+﻿using BitmapLibrary;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -18,16 +20,19 @@ namespace CNN
         LeakyReLU,
         Sigmoid,
     }
-    public class BLPNet
+
+    public class BNPNet
     {
-        internal class BLPNetForReadJson
+        internal class BLPNetForJson
         {
             public ActivationFuncType ActivationFuncType { get; set; }
-            public List<Neuron[]> Layers { get; set; }
+            public int[] Layers { get; set; }
             public List<double[,]> Connections { get; set; }
             public List<double[,]> DeltaConnections { get; set; }
             public double SpeedOfLearning { get; set; }
         }
+
+        private ActivationFuncType ActivationFuncType {get ;set;}
 
         private Func<double, double> _activation { get; set; }
 
@@ -37,14 +42,15 @@ namespace CNN
 
         public double Alpha { get; set; }
 
-        public List<Neuron[]> Layers { get; }
+        public List<Neuron[]> Layers { get; private set; }
 
-        public List<double[,]> Connections { get; }
+        public List<double[,]> Connections { get; private set; }
 
-        public List<double[,]> DeltaConnections { get; }
+        public List<double[,]> DeltaConnections { get; private set; }
 
-        public BLPNet(ActivationFuncType funcType, int[] layers)
+        public BNPNet(ActivationFuncType funcType, int[] layers)
         {
+            ActivationFuncType = funcType;
             SetActivationFunc(funcType);
             Layers = new List<Neuron[]>(layers.Length);
             for (int i = 0; i < layers.Length; i++)
@@ -73,13 +79,25 @@ namespace CNN
             }
         }
 
-        public BLPNet(string path)
+        public BNPNet(string path)
         {
             var input = File.ReadAllText(path);
-            var obj = JsonConvert.DeserializeObject<BLPNetForReadJson>(input);
+            var obj = JsonConvert.DeserializeObject<BLPNetForJson>(input);
 
             SetActivationFunc(obj.ActivationFuncType);
-            Layers = obj.Layers;
+            Layers = new List<Neuron[]>(obj.Layers.Length);
+            for (int i = 0; i < obj.Layers.Length; i++)
+            {
+                if (i != obj.Layers.Length - 1)
+                {
+                    Layers.Add(new Neuron[obj.Layers[i] + 1]);
+                    Layers[i][^1] = new Neuron { Output = 1 };
+                }
+                else
+                {
+                    Layers.Add(new Neuron[obj.Layers[i]]);
+                }
+            }
             Connections = obj.Connections;
             DeltaConnections = obj.DeltaConnections;
             SpeedOfLearning = obj.SpeedOfLearning;
@@ -87,7 +105,15 @@ namespace CNN
 
         public void Save(string path)
         {
-            var output = JsonConvert.SerializeObject(this);
+            var toWrite = new BLPNetForJson { ActivationFuncType = ActivationFuncType, Connections = Connections, DeltaConnections = DeltaConnections, SpeedOfLearning = SpeedOfLearning };
+            toWrite.Layers = new int[Layers.Count];
+            for (int i = 0; i < Layers.Count - 1; i++)
+            {
+                toWrite.Layers[i] = Layers[i].Length - 1;
+            }
+            toWrite.Layers[^1] = Layers[^1].Length;
+
+            var output = JsonConvert.SerializeObject(toWrite);
             File.WriteAllText(path, output);
         }
 
@@ -150,35 +176,67 @@ namespace CNN
             UpdateConnections(deltas);
         }
 
+        public double[] Train(List<NNetData> trainingDatas, SmoothMatrixType type, int size, int epochs)
+        {
+            double[] loss = new double[Math.Min(trainingDatas.Count, epochs)];
+            for (int i = 0; i < trainingDatas.Count && i < epochs; i++)
+            {
+                var bitmap = new Bitmap(trainingDatas[i].picture, 32, 32).GetBWPicture();
+                var smoothedBWPicture = bitmap.SmoothBWPicture(type, size);
+                var gradients = smoothedBWPicture.FindGradients();
+                var gradientsWithSuppressedMaximums = gradients.SuppressMaximums();
+                var cuttedGradients = gradientsWithSuppressedMaximums.BlackEdge(size / 2 + 1);
+                var filteredGradients = cuttedGradients.Filtering();
+
+                var doubleViewOfPicture = new double[32, 32];
+                for (int y = 0; y < 32; y++)
+                {
+                    for (int x = 0; x < 32; x++)
+                    {
+                        doubleViewOfPicture[y, x] = filteredGradients[y, x].Length;
+                    }
+                }
+
+                var trainVector = doubleViewOfPicture.ToVector();
+
+                GetResult(trainVector);
+
+                loss[i] = LossFunction(trainingDatas[i].ideal);
+                BackPropagation(trainingDatas[i].ideal);
+            }
+
+            return loss;
+        }
+
         private List<double[,]> GetDeltaConnections(double[] ideal)
         {
-            var deltas = new List<double[]>(Layers.Count);
+            var omegas = new List<double[]>(Layers.Count);
             for (int l = 0; l < Layers.Count - 1; l++)
             {
                 // не считать градиенты для нейронов смещения из скрытых слоёв 
-                deltas.Add(new double[Layers[l].Length - 1]);
+                omegas.Add(new double[Layers[l].Length - 1]);
             }
-            deltas.Add(new double[Layers[^1].Length]);
+            omegas.Add(new double[Layers[^1].Length]);
 
             // подсчитать дельты для выходов
-            for (int outNeuron = 0; outNeuron < deltas[^1].Length; outNeuron++)
+            for (int outNeuron = 0; outNeuron < omegas[^1].Length; outNeuron++)
             {
                 Neuron outN = Layers[^1][outNeuron];
-                deltas[^1][outNeuron] = (ideal[outNeuron] - outN.Output) * _difActivation(outN.Input);
+                omegas[^1][outNeuron] = (ideal[outNeuron] - outN.Output) * _difActivation(outN.Input);
             }
             
             // подсчитать дельты для скрытых и входного слоёв
-            for (int l = deltas.Count - 2; l >= 0; l--)
+            for (int l = omegas.Count - 2; l >= 0; l--)
             {
-                for (int start = 0; start < deltas[l].Length; start++)
+                for (int start = 0; start < omegas[l].Length; start++)
                 {
                     var sum = 0.0;
-                    for (int end = 0; end < deltas[l + 1].Length; end++)
+                    for (int end = 0; end < omegas[l + 1].Length; end++)
                     {
-                        sum += SpeedOfLearning * deltas[l + 1][end] * Connections[l][start, end];
+                        sum += SpeedOfLearning * omegas[l + 1][end] * Connections[l][start, end];
                     }
 
-                    deltas[l][start] = _difActivation(Layers[l][start].Input) * sum;
+                    omegas[l][start] = _difActivation(Layers[l][start].Input) * sum;
                 }
             }
 
@@ -188,7 +246,7 @@ namespace CNN
                 {
                     for (int end = 0; end < DeltaConnections[l].GetLength(1); end++)
                     {
-                        DeltaConnections[l][start, end] = SpeedOfLearning * deltas[l + 1][end] * Layers[l][start].Output;
+                        DeltaConnections[l][start, end] = SpeedOfLearning * omegas[l + 1][end] * Layers[l][start].Output;
                     }
                 }
             }
@@ -232,7 +290,7 @@ namespace CNN
             {
                 for (int j = 0; j < array.GetLength(1); j++)
                 {
-                    array[i, j] = random.NextDouble() % 0.5/*(random.Next() % 3 + 1) * random.NextDouble() * (random.NextDouble() > 0.5 ? 1 : -1)*/;
+                    array[i, j] = random.NextDouble() * 4 - 4/*(random.Next() % 3 + 1) * random.NextDouble() * (random.NextDouble() > 0.5 ? 1 : -1)*/;
                 }
             }
 

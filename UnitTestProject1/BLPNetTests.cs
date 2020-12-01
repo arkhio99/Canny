@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System;
 
 namespace UnitTestProject1
 {
@@ -268,10 +269,29 @@ namespace UnitTestProject1
     [TestClass]
     public class BLPNetTests
     {
+        private NNetData JpegToData(string path)
+        {
+            var splited = path.Split('\\');
+            return new NNetData { ideal = new double[] { double.Parse(splited[^2]) }, picture = new Bitmap(Image.FromFile(path)) };
+        }
+
+        private List<NNetData> DirectoryToData(string path)
+        {
+            var dir = new DirectoryInfo(path);
+            var files = dir.GetFiles();
+            var res = new List<NNetData>(files.Length);
+            foreach (var file in files)
+            {
+                res.Add(JpegToData(file.FullName));
+            }
+
+            return res;
+        }
+
         [TestMethod]
         public void CanSaveTest()
         {
-            var network = new BLPNet(ActivationFuncType.LeakyReLU,
+            var network = new BNPNet(ActivationFuncType.LeakyReLU,
                 new int[] { 2, 2, 1 });
 
             network.Save("saveblp.json");
@@ -280,7 +300,7 @@ namespace UnitTestProject1
         [TestMethod]
         public void CanGetResult()
         {
-            var network = new BLPNet(ActivationFuncType.LeakyReLU,
+            var network = new BNPNet(ActivationFuncType.Sigmoid,
                 new int[] { 2, 2, 1 });
 
             var input = new double[] { 1, 2 };
@@ -288,7 +308,7 @@ namespace UnitTestProject1
             network.Save("saveblp.json");
             var expected = network.GetResult(input);
 
-            network = new BLPNet("saveblp.json");
+            network = new BNPNet("saveblp.json");
             var actual = network.GetResult(input);
 
             for (int i = 0; i < expected.Length; i++)
@@ -304,12 +324,12 @@ namespace UnitTestProject1
 
             double cur = 0;
             double last = 0;
-            BLPNet net = new BLPNet("saveblp.json");
+            BNPNet net = new BNPNet("saveblp.json");
             var input = Enumerable.Range(1, howInput).Select(n => (double)n).ToArray();
             var ideal = new double[] { 1.5 };
             while (cur <= last)
             {
-                net = new BLPNet(ActivationFuncType.Sigmoid,
+                net = new BNPNet(ActivationFuncType.Sigmoid,
                   new int[] { howInput, 50, 50, 50, 1 });
                 net.GetResult(input);
                 cur = net.LossFunction(ideal);
@@ -322,7 +342,7 @@ namespace UnitTestProject1
             }
             net.Save("saveblp.net");
 
-            net = new BLPNet("saveblp.net");
+            net = new BNPNet("saveblp.net");
             net.GetResult(input);
             cur = net.LossFunction(ideal);
             System.Console.WriteLine(cur);
@@ -331,6 +351,66 @@ namespace UnitTestProject1
             last = cur;
             cur = net.LossFunction(ideal);
             System.Console.WriteLine(net.LossFunction(ideal));
+        }
+
+        [TestMethod]
+        public void TrainNet()
+        {
+            var network = new BNPNet(ActivationFuncType.Sigmoid, new int[] { 32 * 32, 100, 100, 1 });
+            string path = @"C:\Users\vladb\Desktop\somaset\TrainData";
+            var trainData1 = DirectoryToData(path + "\\1");
+            var losses = network.Train(trainData1, BitmapLibrary.SmoothMatrixType.Simple, 3, 200);
+            Console.WriteLine($"first = {losses[0]}\t, last = {losses[^1]}");
+            var trainData0 = DirectoryToData(path + "\\0");
+            losses = network.Train(trainData0, BitmapLibrary.SmoothMatrixType.Simple, 3, 300);
+            Console.WriteLine($"first = {losses[0]}\t, last = {losses[^1]}");
+            network.Save(@"C:\Users\vladb\Desktop\somaset\network.json");
+        }
+
+        [TestMethod]
+        public void TestNet()
+        {
+            var network = new BNPNet(@"C:\Users\vladb\Desktop\somaset\network.json");
+            string pathTest = @"C:\Users\vladb\Desktop\somaset\TestData";
+            var testData1 = DirectoryToData(pathTest + "\\1");
+            var testData0 = DirectoryToData(pathTest + "\\0");
+            int all = testData1.Count + testData0.Count;
+            int success = 0;
+            for (int i = 0; i < testData1.Count; i++)
+            {
+                var pic = new Bitmap(testData1[i].picture, 32, 32);
+                double[,] doublePic = new double[pic.Height, pic.Width];
+                for (int y = 0; y < doublePic.GetLength(0); y++)
+                {
+                    for (int x = 0; x < doublePic.GetLength(1); x++)
+                    {
+                        doublePic[y, x] = testData1[i].picture.GetPixel(x, y).R;
+                    }
+                }
+
+                var output = network.GetResult(doublePic.ToVector());
+
+                success += Math.Abs(output[0] - testData1[i].ideal[0]) < 0.01 ? 1 : 0;
+            }
+
+            for (int i = 0; i < testData0.Count; i++)
+            {
+                var pic = new Bitmap(testData0[i].picture, 32, 32);
+                double[,] doublePic = new double[pic.Height, pic.Width];
+                for (int y = 0; y < doublePic.GetLength(0); y++)
+                {
+                    for (int x = 0; x < doublePic.GetLength(1); x++)
+                    {
+                        doublePic[y, x] = testData0[i].picture.GetPixel(x, y).R;
+                    }
+                }
+
+                var output = network.GetResult(doublePic.ToVector());
+
+                success += Math.Abs(output[0] - testData0[i].ideal[0]) < 0.01 ? 1 : 0;
+            }
+
+            Console.WriteLine($"Процент попадания: {(double)success / all * 100}");
         }
     }
 }
