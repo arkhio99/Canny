@@ -95,7 +95,7 @@ namespace Canny
                 BNPNet net = new BNPNet(@"C:\Users\vladb\Desktop\somaset\network.json");
 
                 var output = net.GetResult(filteredGradients.LengthsToArray().ToVector());
-                StateLbl.Text = "Человек " + ((1 - output[0]) > 0.2 ? "присутствует" : "отсутствует") + " на фотографии";
+                StateLbl.Text = "Человек " + ((1 - output[0]) < 0.2 ? "присутствует" : "отсутствует") + " на фотографии";
                 StateLbl.Refresh();
             }));
 
