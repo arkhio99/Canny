@@ -56,7 +56,7 @@
             // openPictureDialog
             // 
             this.openPictureDialog.FileName = "Picture";
-            this.openPictureDialog.Filter = "Pictures (*.bmp)|*.bmp";
+            this.openPictureDialog.Filter = "Pictures (*.bmp)|*.bmp|(*.jpeg)|*.jpeg|(*.jpg)|*.jpg";
             // 
             // resultPicBox
             // 

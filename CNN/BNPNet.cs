@@ -5,9 +5,8 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Text;
 
-namespace CNN
+namespace NeuralNet
 {
     public class Neuron
     {
@@ -30,13 +29,18 @@ namespace CNN
             public List<double[,]> Connections { get; set; }
             public List<double[,]> DeltaConnections { get; set; }
             public double SpeedOfLearning { get; set; }
+            public bool WithSoftmax { get ; set; }
         }
 
-        private ActivationFuncType ActivationFuncType {get ;set;}
+        private ActivationFuncType ActivationFuncType { get ;set;}
 
         private Func<double, double> _activation { get; set; }
 
         private Func<double, double> _difActivation { get; set; }
+        
+        private double _sumOfExpsOnOutput;
+
+        public bool WithSoftmax { get; private set; } = false;
 
         public double SpeedOfLearning { get; set; } = 0.5;
 
@@ -48,9 +52,10 @@ namespace CNN
 
         public List<double[,]> DeltaConnections { get; private set; }
 
-        public BNPNet(ActivationFuncType funcType, int[] layers)
+        public BNPNet(ActivationFuncType funcType, int[] layers, bool WithSoftmax = false)
         {
             ActivationFuncType = funcType;
+            this.WithSoftmax = WithSoftmax;
             SetActivationFunc(funcType);
             Layers = new List<Neuron[]>(layers.Length);
             for (int i = 0; i < layers.Length; i++)
@@ -101,11 +106,19 @@ namespace CNN
             Connections = obj.Connections;
             DeltaConnections = obj.DeltaConnections;
             SpeedOfLearning = obj.SpeedOfLearning;
+            WithSoftmax = obj.WithSoftmax;
         }
 
         public void Save(string path)
         {
-            var toWrite = new BLPNetForJson { ActivationFuncType = ActivationFuncType, Connections = Connections, DeltaConnections = DeltaConnections, SpeedOfLearning = SpeedOfLearning };
+            var toWrite = new BLPNetForJson 
+            {
+                ActivationFuncType = ActivationFuncType,
+                Connections = Connections,
+                DeltaConnections = DeltaConnections,
+                SpeedOfLearning = SpeedOfLearning,
+                WithSoftmax = WithSoftmax,
+            };
             toWrite.Layers = new int[Layers.Count];
             for (int i = 0; i < Layers.Count - 1; i++)
             {
@@ -156,6 +169,17 @@ namespace CNN
                 Layers[^1][neuron] = new Neuron { Input = sum, Output = _activation(sum) };
             }
 
+            // Нормализовать вывод
+            if (WithSoftmax)
+            {
+                _sumOfExpsOnOutput = Layers[^1].Sum(o => Math.Exp(o.Output));
+                Layers[^1] = Layers[^1].Select(o => new Neuron 
+                {
+                    Input = o.Input,
+                    Output = Math.Exp(o.Output) / _sumOfExpsOnOutput,
+                }).ToArray();
+            }
+
             return Layers[^1].Select(n => n.Output).ToArray();
         }
 
@@ -164,7 +188,8 @@ namespace CNN
             double sum = 0;
             for (int i = 0; i < Layers[^1].Length; i++)
             {
-                sum += (ideal[i] - Layers[^1][i].Output) * (ideal[i] - Layers[^1][i].Output);
+                double actual = Layers[^1][i].Output;
+                sum += (ideal[i] - actual) * (ideal[i] - actual);
             }
 
             return sum / Layers[^1].Length;
@@ -193,7 +218,7 @@ namespace CNN
                 {
                     for (int x = 0; x < 32; x++)
                     {
-                        doubleViewOfPicture[y, x] = filteredGradients[y, x].Length;
+                        doubleViewOfPicture[y, x] = filteredGradients[y, x].Length != 0 ? 1 : 0;
                     }
                 }
 
@@ -206,6 +231,11 @@ namespace CNN
             }
 
             return loss;
+        }
+
+        private double SoftMax(double o)
+        {
+            return Math.Exp(o) / _sumOfExpsOnOutput;
         }
 
         private List<double[,]> GetDeltaConnections(double[] ideal)
@@ -222,7 +252,9 @@ namespace CNN
             for (int outNeuron = 0; outNeuron < omegas[^1].Length; outNeuron++)
             {
                 Neuron outN = Layers[^1][outNeuron];
-                omegas[^1][outNeuron] = (ideal[outNeuron] - outN.Output) * _difActivation(outN.Input);
+                double actual = WithSoftmax ? Math.Log(outN.Output) * _sumOfExpsOnOutput : outN.Output;
+                double expected = WithSoftmax ? Math.Log(ideal[outNeuron]) * _sumOfExpsOnOutput : ideal[outNeuron];
+                omegas[^1][outNeuron] = (expected -  actual) * _difActivation(outN.Input);
             }
             
             // подсчитать дельты для скрытых и входного слоёв
@@ -290,7 +322,7 @@ namespace CNN
             {
                 for (int j = 0; j < array.GetLength(1); j++)
                 {
-                    array[i, j] = random.NextDouble() * 4 - 4/*(random.Next() % 3 + 1) * random.NextDouble() * (random.NextDouble() > 0.5 ? 1 : -1)*/;
+                    array[i, j] = random.NextDouble() % 0.1 - 0.2/*(random.Next() % 3 + 1) * random.NextDouble() * (random.NextDouble() > 0.5 ? 1 : -1)*/;
                 }
             }
 

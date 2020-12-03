@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using BitmapLibrary;
+using NeuralNet;
 
 namespace Canny
 {
@@ -87,6 +88,17 @@ namespace Canny
                 StateLbl.Refresh();
             }));
 
+            Invoke(new Action(() => 
+            {
+                StateLbl.Text = "Нейросеть вычисляет есть ли человек на фотографии!";
+                StateLbl.Refresh();
+                BNPNet net = new BNPNet(@"C:\Users\vladb\Desktop\somaset\network.json");
+
+                var output = net.GetResult(filteredGradients.LengthsToArray().ToVector());
+                StateLbl.Text = "Человек " + ((1 - output[0]) > 0.2 ? "присутствует" : "отсутствует") + " на фотографии";
+                StateLbl.Refresh();
+            }));
+
             return filteredGradients.ToBitmap();
         }
 
@@ -102,7 +114,7 @@ namespace Canny
                     sb.Append(pathSplitted[i] + @"\");
                 }
                 path = sb.ToString();
-                originalPic = new Bitmap(openPictureDialog.FileName);
+                originalPic = new Bitmap(Image.FromFile(openPictureDialog.FileName));
                 originalPicBox.Image = originalPic;
                 ExecuteBtn.Enabled = true;
             }

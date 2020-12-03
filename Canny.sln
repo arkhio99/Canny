@@ -5,13 +5,13 @@ VisualStudioVersion = 16.0.30503.244
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Canny", "Canny\Canny.csproj", "{A517402F-84FA-4B76-A08A-7D70064D5C98}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CNN", "CNN\CNN.csproj", "{C45CE29A-A658-4360-B42F-4175A237330E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NeuralNet", "CNN\NeuralNet.csproj", "{C45CE29A-A658-4360-B42F-4175A237330E}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UnitTestProject1", "UnitTestProject1\UnitTestProject1.csproj", "{9CEF0804-16A5-4A9A-9B6B-077D0C8F7CC7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BitmapLibrary", "BitmapLibrary\BitmapLibrary.csproj", "{AECC7E0D-A162-4D5D-90BB-5240A27FA477}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BitmapLibrary", "BitmapLibrary\BitmapLibrary.csproj", "{AECC7E0D-A162-4D5D-90BB-5240A27FA477}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DownloadDataSet", "DownloadDataSet\DownloadDataSet.csproj", "{2194CEAB-3B76-4995-BD8F-8E327298626C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DownloadDataSet", "DownloadDataSet\DownloadDataSet.csproj", "{2194CEAB-3B76-4995-BD8F-8E327298626C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -1,5 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using CNN;
+using NeuralNet;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -272,7 +272,16 @@ namespace UnitTestProject1
         private NNetData JpegToData(string path)
         {
             var splited = path.Split('\\');
-            return new NNetData { ideal = new double[] { double.Parse(splited[^2]) }, picture = new Bitmap(Image.FromFile(path)) };
+            double ideal = double.Parse(splited[^2]);
+            return new NNetData 
+            { 
+                ideal = new double[] 
+                { 
+                    Math.Abs(ideal) > 0.001 ? ideal : 0.001,
+                    Math.Abs(1 - ideal) > 0.001 ? 1- ideal : 0.001,
+                },
+                picture = new Bitmap(Image.FromFile(path)),
+            };
         }
 
         private List<NNetData> DirectoryToData(string path)
@@ -301,7 +310,7 @@ namespace UnitTestProject1
         public void CanGetResult()
         {
             var network = new BNPNet(ActivationFuncType.Sigmoid,
-                new int[] { 2, 2, 1 });
+                new int[] { 2, 2, 2 }, true);
 
             var input = new double[] { 1, 2 };
 
@@ -356,13 +365,15 @@ namespace UnitTestProject1
         [TestMethod]
         public void TrainNet()
         {
-            var network = new BNPNet(ActivationFuncType.Sigmoid, new int[] { 32 * 32, 100, 100, 1 });
+            var network = new BNPNet(ActivationFuncType.LeakyReLU, new int[] { 32 * 32, 100, 100, 2 }, true);
             string path = @"C:\Users\vladb\Desktop\somaset\TrainData";
+            int epochs = 300;
+
             var trainData1 = DirectoryToData(path + "\\1");
-            var losses = network.Train(trainData1, BitmapLibrary.SmoothMatrixType.Simple, 3, 200);
+            var losses = network.Train(trainData1, BitmapLibrary.SmoothMatrixType.Simple, 3, epochs / 2);
             Console.WriteLine($"first = {losses[0]}\t, last = {losses[^1]}");
             var trainData0 = DirectoryToData(path + "\\0");
-            losses = network.Train(trainData0, BitmapLibrary.SmoothMatrixType.Simple, 3, 300);
+            losses = network.Train(trainData0, BitmapLibrary.SmoothMatrixType.Simple, 3, epochs / 2);
             Console.WriteLine($"first = {losses[0]}\t, last = {losses[^1]}");
             network.Save(@"C:\Users\vladb\Desktop\somaset\network.json");
         }
@@ -389,8 +400,7 @@ namespace UnitTestProject1
                 }
 
                 var output = network.GetResult(doublePic.ToVector());
-
-                success += Math.Abs(output[0] - testData1[i].ideal[0]) < 0.01 ? 1 : 0;
+                success += Math.Abs(output[0] - testData1[i].ideal[0]) < 0.2 ? 1 : 0;
             }
 
             for (int i = 0; i < testData0.Count; i++)
@@ -407,7 +417,7 @@ namespace UnitTestProject1
 
                 var output = network.GetResult(doublePic.ToVector());
 
-                success += Math.Abs(output[0] - testData0[i].ideal[0]) < 0.01 ? 1 : 0;
+                success += Math.Abs(output[0] - testData0[i].ideal[0]) < 0.2 ? 1 : 0;
             }
 
             Console.WriteLine($"Процент попадания: {(double)success / all * 100}");

@@ -6,7 +6,7 @@ using System.IO;
 using System.Drawing;
 using BitmapLibrary;
 
-namespace CNN
+namespace NeuralNet
 {
     //public class Neuron
     //{

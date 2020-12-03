@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BitmapLibrary\BitmapLibrary.csproj" />
-    <ProjectReference Include="..\CNN\CNN.csproj" />
+    <ProjectReference Include="..\CNN\NeuralNet.csproj" />
   </ItemGroup>
 
 </Project>
