@@ -365,15 +365,16 @@ namespace UnitTestProject1
         [TestMethod]
         public void TrainNet()
         {
-            var network = new BNPNet(ActivationFuncType.LeakyReLU, new int[] { 32 * 32, 100, 100, 2 }, true);
+            int sizeOfPic = 64;
+            var network = new BNPNet(ActivationFuncType.LeakyReLU, new int[] { sizeOfPic * sizeOfPic, 100, 100, 2 }, true);
             string path = @"C:\Users\vladb\Desktop\somaset\TrainData";
             int epochs = 300;
 
             var trainData1 = DirectoryToData(path + "\\1");
-            var losses = network.Train(trainData1, BitmapLibrary.SmoothMatrixType.Simple, 3, epochs / 2);
+            var losses = network.Train(trainData1, BitmapLibrary.SmoothMatrixType.Simple, 3, epochs / 2, sizeOfPic);
             Console.WriteLine($"first = {losses[0]}\t, last = {losses[^1]}");
             var trainData0 = DirectoryToData(path + "\\0");
-            losses = network.Train(trainData0, BitmapLibrary.SmoothMatrixType.Simple, 3, epochs / 2);
+            losses = network.Train(trainData0, BitmapLibrary.SmoothMatrixType.Simple, 3, epochs / 2, sizeOfPic);
             Console.WriteLine($"first = {losses[0]}\t, last = {losses[^1]}");
             network.Save(@"C:\Users\vladb\Desktop\somaset\network.json");
         }
@@ -381,6 +382,7 @@ namespace UnitTestProject1
         [TestMethod]
         public void TestNet()
         {
+            int sizeOfPic = 64;
             var network = new BNPNet(@"C:\Users\vladb\Desktop\somaset\network.json");
             string pathTest = @"C:\Users\vladb\Desktop\somaset\TestData";
             var testData1 = DirectoryToData(pathTest + "\\1");
@@ -389,7 +391,7 @@ namespace UnitTestProject1
             int success = 0;
             for (int i = 0; i < testData1.Count; i++)
             {
-                var pic = new Bitmap(testData1[i].picture, 32, 32);
+                var pic = new Bitmap(testData1[i].picture, sizeOfPic, sizeOfPic);
                 double[,] doublePic = new double[pic.Height, pic.Width];
                 for (int y = 0; y < doublePic.GetLength(0); y++)
                 {
@@ -405,7 +407,7 @@ namespace UnitTestProject1
 
             for (int i = 0; i < testData0.Count; i++)
             {
-                var pic = new Bitmap(testData0[i].picture, 32, 32);
+                var pic = new Bitmap(testData0[i].picture, sizeOfPic, sizeOfPic);
                 double[,] doublePic = new double[pic.Height, pic.Width];
                 for (int y = 0; y < doublePic.GetLength(0); y++)
                 {

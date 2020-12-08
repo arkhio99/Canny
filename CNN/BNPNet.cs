@@ -20,6 +20,12 @@ namespace NeuralNet
         Sigmoid,
     }
 
+    public class NNetData
+    {
+        public double[] ideal;
+        public Bitmap picture;
+    }
+
     public class BNPNet
     {
         internal class BLPNetForJson
@@ -84,9 +90,8 @@ namespace NeuralNet
             }
         }
 
-        public BNPNet(string path)
+        public BNPNet(string input)
         {
-            var input = File.ReadAllText(path);
             var obj = JsonConvert.DeserializeObject<BLPNetForJson>(input);
 
             SetActivationFunc(obj.ActivationFuncType);
@@ -109,7 +114,7 @@ namespace NeuralNet
             WithSoftmax = obj.WithSoftmax;
         }
 
-        public void Save(string path)
+        public string Save()
         {
             var toWrite = new BLPNetForJson 
             {
@@ -127,7 +132,7 @@ namespace NeuralNet
             toWrite.Layers[^1] = Layers[^1].Length;
 
             var output = JsonConvert.SerializeObject(toWrite);
-            File.WriteAllText(path, output);
+            return output;
         }
 
         public double[] GetResult(double[] input)
@@ -195,28 +200,29 @@ namespace NeuralNet
             return sum / Layers[^1].Length;
         }
 
-        public void BackPropagation(double[] ideal)
+        public double[] BackPropagation(double[] ideal)
         {
-            var deltas = GetDeltaConnections(ideal);
+            var deltas = GetDeltaConnections(ideal, out double[] omegasOnFirstLayer);
             UpdateConnections(deltas);
+            return omegasOnFirstLayer;
         }
 
-        public double[] Train(List<NNetData> trainingDatas, SmoothMatrixType type, int size, int epochs)
+        public double[] Train(List<NNetData> trainingDatas, SmoothMatrixType type, int size, int epochs, int sizeOfPic)
         {
             double[] loss = new double[Math.Min(trainingDatas.Count, epochs)];
             for (int i = 0; i < trainingDatas.Count && i < epochs; i++)
             {
-                var bitmap = new Bitmap(trainingDatas[i].picture, 32, 32).GetBWPicture();
+                var bitmap = new Bitmap(trainingDatas[i].picture, sizeOfPic, sizeOfPic).GetBWPicture();
                 var smoothedBWPicture = bitmap.SmoothBWPicture(type, size);
                 var gradients = smoothedBWPicture.FindGradients();
                 var gradientsWithSuppressedMaximums = gradients.SuppressMaximums();
                 var cuttedGradients = gradientsWithSuppressedMaximums.BlackEdge(size / 2 + 1);
                 var filteredGradients = cuttedGradients.Filtering();
 
-                var doubleViewOfPicture = new double[32, 32];
-                for (int y = 0; y < 32; y++)
+                var doubleViewOfPicture = new double[sizeOfPic, sizeOfPic];
+                for (int y = 0; y < sizeOfPic; y++)
                 {
-                    for (int x = 0; x < 32; x++)
+                    for (int x = 0; x < sizeOfPic; x++)
                     {
                         doubleViewOfPicture[y, x] = filteredGradients[y, x].Length != 0 ? 1 : 0;
                     }
@@ -238,7 +244,7 @@ namespace NeuralNet
             return Math.Exp(o) / _sumOfExpsOnOutput;
         }
 
-        private List<double[,]> GetDeltaConnections(double[] ideal)
+        private List<double[,]> GetDeltaConnections(double[] ideal, out double[] firstLayerOmegas)
         {
             var omegas = new List<double[]>(Layers.Count);
             for (int l = 0; l < Layers.Count - 1; l++)
@@ -271,6 +277,8 @@ namespace NeuralNet
                     omegas[l][start] = _difActivation(Layers[l][start].Input) * sum;
                 }
             }
+
+            firstLayerOmegas = omegas[0];
 
             for (int l = 0; l < DeltaConnections.Count; l++)
             {

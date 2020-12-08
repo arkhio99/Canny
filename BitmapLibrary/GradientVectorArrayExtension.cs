@@ -163,7 +163,7 @@ namespace BitmapLibrary
             double res = 0;
             for (int i = howIntervals - 1; i >= 0 ; i--)
             {
-                if (sum + intervals[i] < vecs.Length / (2/*intervalHMath.Log(vecs.Length)*/) )
+                if (sum + intervals[i] < vecs.Length / (howIntervals) )
                 {
                     sum += intervals[i];
                     res = rightEdgeOfInterval[i];

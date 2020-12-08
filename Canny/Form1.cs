@@ -44,7 +44,7 @@ namespace Canny
         public Bitmap CannyProcessing(SmoothMatrixType type, int size)
         {
             Invoke(new Action(() => StateLbl.Text = "Начато преобразование"));
-            var bitmap = new Bitmap(originalPic, 32, 32).GetBWPicture();
+            var bitmap = new Bitmap(originalPic, 64, 64).GetBWPicture();
             Invoke(new Action(() => 
             {
                 StateLbl.Text = "Получено чернобелое изображение";
@@ -81,23 +81,23 @@ namespace Canny
                 StateLbl.Refresh();
             }));
                 
-            var filteredGradients = cuttedGradients.Filtering();
-            Invoke(new Action(() => 
-            {
-                StateLbl.Text = "Произведена фильтрация. Готово!";
-                StateLbl.Refresh();
-            }));
+            var filteredGradients = cuttedGradients;//.Filtering();
+            //Invoke(new Action(() => 
+            //{
+            //    StateLbl.Text = "Произведена фильтрация. Готово!";
+            //    StateLbl.Refresh();
+            //}));
 
-            Invoke(new Action(() => 
-            {
-                StateLbl.Text = "Нейросеть вычисляет есть ли человек на фотографии!";
-                StateLbl.Refresh();
-                BNPNet net = new BNPNet(@"C:\Users\vladb\Desktop\somaset\network.json");
+            //Invoke(new Action(() => 
+            //{
+            //    StateLbl.Text = "Нейросеть вычисляет есть ли человек на фотографии!";
+            //    StateLbl.Refresh();
+            //    BNPNet net = new BNPNet(@"C:\Users\vladb\Desktop\somaset\network.json");
 
-                var output = net.GetResult(filteredGradients.LengthsToArray().ToVector());
-                StateLbl.Text = "Человек " + ((1 - output[0]) < 0.2 ? "присутствует" : "отсутствует") + " на фотографии";
-                StateLbl.Refresh();
-            }));
+            //    var output = net.GetResult(filteredGradients.LengthsToArray().ToVector());
+            //    StateLbl.Text = "Человек " + ((1 - output[0]) < 0.2 ? "присутствует" : "отсутствует") + " на фотографии";
+            //    StateLbl.Refresh();
+            //}));
 
             return filteredGradients.ToBitmap();
         }
