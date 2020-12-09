@@ -46,18 +46,43 @@ namespace NeuralNet
         
         private double _sumOfExpsOnOutput;
 
+        /// <summary>
+        /// Применяется ли SoftMax
+        /// </summary>
         public bool WithSoftmax { get; private set; } = false;
 
+        /// <summary>
+        /// Скорость обучения
+        /// </summary>
         public double SpeedOfLearning { get; set; } = 0.5;
 
+        /// <summary>
+        /// Скорость прироста
+        /// </summary>
         public double Alpha { get; set; } = 0.3;
 
+        /// <summary>
+        /// Слои нейронов
+        /// </summary>
         public List<Neuron[]> Layers { get; private set; }
 
+        /// <summary>
+        /// Список массивов связей между нейронами
+        /// [0] - между входным и первым скрытым слоем
+        /// </summary>
         public List<double[,]> Connections { get; private set; }
 
+        /// <summary>
+        /// Список массивов дельт связей
+        /// </summary>
         public List<double[,]> DeltaConnections { get; private set; }
 
+        /// <summary>
+        /// Конструктор перцептрона
+        /// </summary>
+        /// <param name="funcType">Тип функции активации</param>
+        /// <param name="layers">Массив, где каждый элемент - количество нейронов на слое</param>
+        /// <param name="WithSoftmax">Использовать ли SoftMax</param>
         public BNPNet(ActivationFuncType funcType, int[] layers, bool WithSoftmax = false)
         {
             ActivationFuncType = funcType;
@@ -90,6 +115,10 @@ namespace NeuralNet
             }
         }
 
+        /// <summary>
+        /// Конструктор по JSON-строке
+        /// </summary>
+        /// <param name="input">JSON-строка</param>
         public BNPNet(string input)
         {
             var obj = JsonConvert.DeserializeObject<BLPNetForJson>(input);
@@ -114,6 +143,10 @@ namespace NeuralNet
             WithSoftmax = obj.WithSoftmax;
         }
 
+        /// <summary>
+        /// Сохраняет в JSON-строку
+        /// </summary>
+        /// <returns>JSON-строка</returns>
         public string Save()
         {
             var toWrite = new BLPNetForJson 
@@ -135,6 +168,11 @@ namespace NeuralNet
             return output;
         }
 
+        /// <summary>
+        /// Обработать входные данные
+        /// </summary>
+        /// <param name="input">Входные данные</param>
+        /// <returns>Результат обработки</returns>
         public double[] GetResult(double[] input)
         {
             if (input.Length != Layers[0].Length - 1)
@@ -190,6 +228,11 @@ namespace NeuralNet
             return Layers[^1].Select(n => n.Output).ToArray();
         }
 
+        /// <summary>
+        /// Функция ошибки.
+        /// </summary>
+        /// <param name="ideal">Эталонные значения</param>
+        /// <returns>Значение ошибки</returns>
         public double LossFunction(double[] ideal)
         {
             double sum = 0;
@@ -202,46 +245,16 @@ namespace NeuralNet
             return sum / Layers[^1].Length;
         }
 
+        /// <summary>
+        /// Обратное распространение ошибки
+        /// </summary>
+        /// <param name="ideal">Эталонные значения</param>
+        /// <returns>Массив ошибок на входном слое</returns>
         public double[] BackPropagation(double[] ideal)
         {
             var deltas = GetDeltaConnections(ideal, out double[] omegasOnFirstLayer);
             UpdateConnections(deltas);
             return omegasOnFirstLayer;
-        }
-
-        public double[] Train(List<NNetData> trainingDatas, SmoothMatrixType type, int size, int epochs, int sizeOfPic)
-        {
-            double[] loss = new double[Math.Min(trainingDatas.Count, epochs)];
-            for (int i = 0; i < trainingDatas.Count && i < epochs; i++)
-            {
-                var bitmap = new Bitmap(trainingDatas[i].picture, sizeOfPic, sizeOfPic).GetBWPicture();
-                var smoothedBWPicture = bitmap.SmoothBWPicture(type, size);
-                var gradients = smoothedBWPicture.FindGradients();
-                var gradientsWithSuppressedMaximums = gradients.SuppressMaximums();
-                var cuttedGradients = gradientsWithSuppressedMaximums.BlackEdge(size / 2 + 1);
-                //var filteredGradients = cuttedGradients.Filtering();
-
-                var doubleViewOfPicture = new double[sizeOfPic, sizeOfPic];
-                for (int y = 0; y < sizeOfPic; y++)
-                {
-                    for (int x = 0; x < sizeOfPic; x++)
-                    {
-                        doubleViewOfPicture[y, x] = cuttedGradients[y, x].Length;
-                    }
-                }
-
-                var trainVector = doubleViewOfPicture.ToVector();
-
-                GetResult(trainVector);
-
-                loss[i] = LossFunction(trainingDatas[i].ideal);
-                if (loss[i] > 0.1)
-                {
-                    BackPropagation(trainingDatas[i].ideal);
-                }
-            }
-
-            return loss;
         }
 
         private double SoftMax(double o)
@@ -276,10 +289,10 @@ namespace NeuralNet
                     var sum = 0.0;
                     for (int end = 0; end < omegas[l + 1].Length; end++)
                     {
-                        sum += SpeedOfLearning * omegas[l + 1][end] * Connections[l][start, end];
+                        sum += omegas[l + 1][end] * Connections[l][start, end];
                     }
-
-                    omegas[l][start] = _difActivation(Layers[l][start].Input) * sum;
+                    
+                    omegas[l][start] = SpeedOfLearning * _difActivation(Layers[l][start].Input) * sum;
                 }
             }
 
@@ -291,7 +304,8 @@ namespace NeuralNet
                 {
                     for (int end = 0; end < DeltaConnections[l].GetLength(1); end++)
                     {
-                        DeltaConnections[l][start, end] = SpeedOfLearning * omegas[l + 1][end] * Layers[l][start].Output + Alpha * DeltaConnections[l][start,end];
+                        //                                                                         TODO Output -> Input
+                        DeltaConnections[l][start, end] = SpeedOfLearning * omegas[l + 1][end] * Layers[l][start].Input + Alpha * DeltaConnections[l][start,end];
                     }
                 }
             }
@@ -307,7 +321,7 @@ namespace NeuralNet
                 {
                     for (int end = 0; end < Connections[l].GetLength(1); end++)
                     {
-                        Connections[l][start, end] -= deltas[l][start, end];
+                        Connections[l][start, end] += deltas[l][start, end];
                     }
                 }
             }
@@ -319,10 +333,10 @@ namespace NeuralNet
             {
                 case ActivationFuncType.LeakyReLU:
                     _activation = (x) => Math.Max(0.1 * x, x);
-                    _difActivation = (x) => x > 0.1 * x ? 0.1 : 1;
+                    _difActivation = (x) => x > 0.1 * x ? 1 : 0.1;
                     break;
                 case ActivationFuncType.Sigmoid:
-                    _activation = (x) => 1 / (1 - Math.Exp(-x));
+                    _activation = (x) => 1 / (1 + Math.Exp(-x));
                     _difActivation = (x) => _activation(x) * (1 - _activation(x));
                     break;
             }
@@ -335,7 +349,7 @@ namespace NeuralNet
             {
                 edge *= Layers[l].Length;
             }
-            edge = 1000 / edge;
+            edge = 1 / edge;
             Random random = new Random();
             for (int i = 0; i < array.GetLength(0); i++)
             {
