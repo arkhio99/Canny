@@ -1,22 +1,184 @@
 ﻿using System;
 using System.Collections.Generic;
-using Newtonsoft.Json;
-using System.Linq;
-using System.IO;
-using System.Drawing;
-using BitmapLibrary;
 
 namespace NeuralNet
 {
     internal class ConvolutionLayer
     {
-        public List<double[,]> Inputs { get; set; }
+        public double[,,] Inputs { get; set; }
         public List<double[,,]> Filters { get; set; }
+
+        public double[,,] GetResult(double[,,] filter)
+        {
+            // по умолчанию массив заполняется нулями 
+            var res = new double[
+                Inputs.GetLength(0) - filter.GetLength(0) + 1,
+                Inputs.GetLength(1) - filter.GetLength(1) + 1,
+                Inputs.GetLength(2) - filter.GetLength(2) + 1];
+
+            for (int l = 0; l < res.GetLength(0); l++)
+            {
+                for (int y = 0; y < res.GetLength(1); y++)
+                {
+                    for (int x = 0; x < res.GetLength(2); x++)
+                    {
+
+                        // Начать свёртку
+                        for (int k = 0; k < filter.GetLength(0); k++)
+                        {
+                            for (int i = 0; i < filter.GetLength(1); i++)
+                            {
+                                for (int j = 0; j < filter.GetLength(2); j++)
+                                {
+                                    res[l, y, x] += Inputs[l + k, y + i, x + j] * filter[k, i, j];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return res;
+        }
+
+        public double[,,] ReverseConvolution(double[,,] init, double[,,] filter)
+        {
+            // по умолчанию массив заполняется нулями 
+            var newInit = new double[
+                init.GetLength(0) + filter.GetLength(0) - 1,
+                init.GetLength(1) + filter.GetLength(1) - 1,
+                init.GetLength(2) + filter.GetLength(2) - 1];
+
+            for (int l = 0; l < init.GetLength(0); l++)
+            {
+                for (int y = 0; y < init.GetLength(1); y++)
+                {
+                    for (int x = 0; x < init.GetLength(2); x++)
+                    {
+                        newInit[l + filter.GetLength(0) / 2 * 2,
+                            y + filter.GetLength(1) / 2 * 2,
+                            x + filter.GetLength(2) / 2 * 2] = init[l, y, x];
+                    }
+                }
+            }
+
+            init = newInit;
+
+            var res = new double[
+                init.GetLength(0) - filter.GetLength(0) + 1,
+                init.GetLength(1) - filter.GetLength(1) + 1,
+                init.GetLength(2) - filter.GetLength(2) + 1];
+
+            for (int l = 0; l < res.GetLength(0); l++)
+            {
+                for (int y = 0; y < res.GetLength(1); y++)
+                {
+                    for (int x = 0; x < res.GetLength(2); x++)
+                    {
+
+                        // Начать свёртку
+                        for (int k = 0; k < filter.GetLength(0); k++)
+                        {
+                            for (int i = 0; i < filter.GetLength(1); i++)
+                            {
+                                for (int j = 0; j < filter.GetLength(2); j++)
+                                {
+                                    int f1 = k + 1;
+                                    int f2 = i + 1;
+                                    int f3 = j + 1;
+                                    res[l, y, x] += init[l + k, y + i, x + j] *
+                                        filter[filter.GetLength(0) - f1,
+                                        filter.GetLength(1) - f2,
+                                        filter.GetLength(2) - f3];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return res;
+        }
     }
 
     internal class PoolingLayer
     {
-        public List<int[,]> PositionOfSquare { get; set; }
+        public int[,,] MaxPositions { get; set; }
+        public int PoolSize { get; set; }
+        public int HowLayers { get; set; }
+
+        public double[,,] GetResult(double[,,] init)
+        {
+            var res = new double[init.GetLength(0) / HowLayers, init.GetLength(1) / PoolSize, init.GetLength(2) / PoolSize];
+            MaxPositions = new int[init.GetLength(0), init.GetLength(1), init.GetLength(2)];
+
+            for (int l = 0; l < res.GetLength(0); l++)
+            {
+                for (int y = 0; y < res.GetLength(1); y++)
+                {
+                    for (int x = 0; x < res.GetLength(2); x++)
+                    {
+                        res[l, y, x] = MaxInSquare(init, l * HowLayers, y * PoolSize, x * PoolSize,
+                            out int zOfMax, out int yOfMax, out int xOfMax);
+
+                        MaxPositions[zOfMax, yOfMax, xOfMax] = 1;
+                    }
+                }
+            }
+
+            return res;
+        }
+
+        public double[,,] UpSample(double[,,] init)
+        {
+            var res = new double[init.GetLength(0) * HowLayers, init.GetLength(1) * PoolSize, init.GetLength(2) * PoolSize];
+            for (int l = 0; l < init.GetLength(0); l++)
+            {
+                for (int i = 0; i < init.GetLength(1); i++)
+                {
+                    for (int j = 0; j < init.GetLength(2); j++)
+                    {
+                        for (int poolL = 0; poolL < HowLayers; poolL++)
+                        {
+                            for (int poolI = 0; poolI < PoolSize; poolI++)
+                            {
+                                for (int poolJ = 0; poolJ < PoolSize; poolJ++)
+                                {
+                                    res[l * HowLayers + poolL, i * PoolSize + poolI, j * PoolSize + poolJ] =
+                                        MaxPositions[l * HowLayers + poolL, i * PoolSize + poolI, j * PoolSize + poolJ] * init[l, i, j];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return res;
+        }
+
+        private double MaxInSquare(double[,,] init, int z, int y, int x, out int zOfMax, out int yOfMax, out int xOfMax)
+        {
+            zOfMax = z;
+            yOfMax = y;
+            xOfMax = x;
+            for (int l = 0; l < HowLayers; l++)
+            {
+                for (int i = 0; i < PoolSize; i++)
+                {
+                    for (int j = 0; j < PoolSize; j++)
+                    {
+                        if (init[z + l, y + i, x + j] > init[zOfMax, yOfMax, xOfMax])
+                        {
+                            zOfMax = z + l;
+                            yOfMax = y + i;
+                            xOfMax = x + j;
+                        }
+                    }
+                }
+            }
+
+            return init[zOfMax, yOfMax, xOfMax];
+        }
     }
 
     public class CNNet
@@ -48,7 +210,6 @@ namespace NeuralNet
             {
                 cl2.Filters.Add(RandomiseFilter(howLayersOnFilter2, sizeOfFilter2));
             }
-
         }
 
         public double[,,] RandomiseFilter(int howLayers, int sizeOfLayer)
