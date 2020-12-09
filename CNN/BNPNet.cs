@@ -50,7 +50,7 @@ namespace NeuralNet
 
         public double SpeedOfLearning { get; set; } = 0.5;
 
-        public double Alpha { get; set; }
+        public double Alpha { get; set; } = 0.3;
 
         public List<Neuron[]> Layers { get; private set; }
 
@@ -142,9 +142,11 @@ namespace NeuralNet
                 throw new ArgumentException("Длина входного массива не соответствует количеству входов");
             }
 
+            double MaxOfInputs = input.Max();
+
             for (int neuron = 0; neuron < Layers[0].Length - 1; neuron++)
             {
-                Layers[0][neuron] = new Neuron { Output = input[neuron] };
+                Layers[0][neuron] = new Neuron { Output = input[neuron] / MaxOfInputs };
             }
 
             for (int l = 1; l < Layers.Count - 1; l++)
@@ -217,14 +219,14 @@ namespace NeuralNet
                 var gradients = smoothedBWPicture.FindGradients();
                 var gradientsWithSuppressedMaximums = gradients.SuppressMaximums();
                 var cuttedGradients = gradientsWithSuppressedMaximums.BlackEdge(size / 2 + 1);
-                var filteredGradients = cuttedGradients.Filtering();
+                //var filteredGradients = cuttedGradients.Filtering();
 
                 var doubleViewOfPicture = new double[sizeOfPic, sizeOfPic];
                 for (int y = 0; y < sizeOfPic; y++)
                 {
                     for (int x = 0; x < sizeOfPic; x++)
                     {
-                        doubleViewOfPicture[y, x] = filteredGradients[y, x].Length != 0 ? 1 : 0;
+                        doubleViewOfPicture[y, x] = cuttedGradients[y, x].Length;
                     }
                 }
 
@@ -233,7 +235,10 @@ namespace NeuralNet
                 GetResult(trainVector);
 
                 loss[i] = LossFunction(trainingDatas[i].ideal);
-                BackPropagation(trainingDatas[i].ideal);
+                if (loss[i] > 0.1)
+                {
+                    BackPropagation(trainingDatas[i].ideal);
+                }
             }
 
             return loss;
@@ -286,7 +291,7 @@ namespace NeuralNet
                 {
                     for (int end = 0; end < DeltaConnections[l].GetLength(1); end++)
                     {
-                        DeltaConnections[l][start, end] = SpeedOfLearning * omegas[l + 1][end] * Layers[l][start].Output;
+                        DeltaConnections[l][start, end] = SpeedOfLearning * omegas[l + 1][end] * Layers[l][start].Output + Alpha * DeltaConnections[l][start,end];
                     }
                 }
             }
@@ -302,7 +307,7 @@ namespace NeuralNet
                 {
                     for (int end = 0; end < Connections[l].GetLength(1); end++)
                     {
-                        Connections[l][start, end] += deltas[l][start, end];
+                        Connections[l][start, end] -= deltas[l][start, end];
                     }
                 }
             }
@@ -325,12 +330,18 @@ namespace NeuralNet
 
         private double[,] RandomiseArray(double[,] array)
         {
+            var edge = 1.0;
+            for (int l = 0; l < Layers.Count; l++)
+            {
+                edge *= Layers[l].Length;
+            }
+            edge = 1000 / edge;
             Random random = new Random();
             for (int i = 0; i < array.GetLength(0); i++)
             {
                 for (int j = 0; j < array.GetLength(1); j++)
                 {
-                    array[i, j] = random.NextDouble() % 0.1 - 0.2/*(random.Next() % 3 + 1) * random.NextDouble() * (random.NextDouble() > 0.5 ? 1 : -1)*/;
+                    array[i, j] = random.NextDouble() % (2 * edge) - edge/*(random.Next() % 3 + 1) * random.NextDouble() * (random.NextDouble() > 0.5 ? 1 : -1)*/;
                 }
             }
 

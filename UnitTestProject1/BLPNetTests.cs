@@ -5,6 +5,7 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System;
+using BitmapLibrary;
 
 namespace UnitTestProject1
 {
@@ -278,7 +279,7 @@ namespace UnitTestProject1
                 ideal = new double[] 
                 { 
                     Math.Abs(ideal) > 0.001 ? ideal : 0.001,
-                    Math.Abs(1 - ideal) > 0.001 ? 1- ideal : 0.001,
+                    Math.Abs(1 - ideal) > 0.001 ? 1 - ideal : 0.001,
                 },
                 picture = new Bitmap(Image.FromFile(path)),
             };
@@ -303,7 +304,7 @@ namespace UnitTestProject1
             var network = new BNPNet(ActivationFuncType.LeakyReLU,
                 new int[] { 2, 2, 1 });
 
-            network.Save("saveblp.json");
+            File.WriteAllText("saveblp.json", network.Save());
         }
 
         [TestMethod]
@@ -314,10 +315,11 @@ namespace UnitTestProject1
 
             var input = new double[] { 1, 2 };
 
-            network.Save("saveblp.json");
+            File.WriteAllText("saveblp.json", network.Save());
+
             var expected = network.GetResult(input);
 
-            network = new BNPNet("saveblp.json");
+            network = new BNPNet(File.ReadAllText("saveblp.json"));
             var actual = network.GetResult(input);
 
             for (int i = 0; i < expected.Length; i++)
@@ -333,7 +335,7 @@ namespace UnitTestProject1
 
             double cur = 0;
             double last = 0;
-            BNPNet net = new BNPNet("saveblp.json");
+            BNPNet net = new BNPNet(File.ReadAllText("saveblp.json"));
             var input = Enumerable.Range(1, howInput).Select(n => (double)n).ToArray();
             var ideal = new double[] { 1.5 };
             while (cur <= last)
@@ -349,9 +351,9 @@ namespace UnitTestProject1
                 cur = net.LossFunction(ideal);
                 System.Console.WriteLine(cur);
             }
-            net.Save("saveblp.net");
+            File.WriteAllText("saveblp.net", net.Save());
 
-            net = new BNPNet("saveblp.net");
+            net = new BNPNet(File.ReadAllText("saveblp.json"));
             net.GetResult(input);
             cur = net.LossFunction(ideal);
             System.Console.WriteLine(cur);
@@ -367,24 +369,23 @@ namespace UnitTestProject1
         {
             int sizeOfPic = 64;
             var network = new BNPNet(ActivationFuncType.LeakyReLU, new int[] { sizeOfPic * sizeOfPic, 100, 100, 2 }, true);
-            string path = @"C:\Users\vladb\Desktop\somaset\TrainData";
-            int epochs = 300;
+            string path = @"C:\Users\Bashe\Desktop\somaset\TrainData";
+            int epochs = 400;
 
-            var trainData1 = DirectoryToData(path + "\\1");
-            var losses = network.Train(trainData1, BitmapLibrary.SmoothMatrixType.Simple, 3, epochs / 2, sizeOfPic);
-            Console.WriteLine($"first = {losses[0]}\t, last = {losses[^1]}");
-            var trainData0 = DirectoryToData(path + "\\0");
-            losses = network.Train(trainData0, BitmapLibrary.SmoothMatrixType.Simple, 3, epochs / 2, sizeOfPic);
-            Console.WriteLine($"first = {losses[0]}\t, last = {losses[^1]}");
-            network.Save(@"C:\Users\vladb\Desktop\somaset\network.json");
+            var trainData = DirectoryToData(path + "\\1");
+            trainData.AddRange(DirectoryToData(path + "\\0"));
+            trainData.Shuffle();
+            
+            var losses = network.Train(trainData, BitmapLibrary.SmoothMatrixType.Simple, 3, epochs, sizeOfPic);
+            File.WriteAllText(@"C:\Users\Bashe\Desktop\somaset\network.json", network.Save());
         }
 
         [TestMethod]
         public void TestNet()
         {
             int sizeOfPic = 64;
-            var network = new BNPNet(@"C:\Users\vladb\Desktop\somaset\network.json");
-            string pathTest = @"C:\Users\vladb\Desktop\somaset\TestData";
+            var network = new BNPNet(File.ReadAllText(@"C:\Users\Bashe\Desktop\somaset\network.json"));
+            string pathTest = @"C:\Users\Bashe\Desktop\somaset\TestData";
             var testData1 = DirectoryToData(pathTest + "\\1");
             var testData0 = DirectoryToData(pathTest + "\\0");
             int all = testData1.Count + testData0.Count;
@@ -402,6 +403,7 @@ namespace UnitTestProject1
                 }
 
                 var output = network.GetResult(doublePic.ToVector());
+                Console.WriteLine("loss = " + network.LossFunction(testData1[i].ideal));
                 success += Math.Abs(output[0] - testData1[i].ideal[0]) < 0.2 ? 1 : 0;
             }
 
@@ -419,6 +421,79 @@ namespace UnitTestProject1
 
                 var output = network.GetResult(doublePic.ToVector());
 
+                Console.WriteLine("loss = " + network.LossFunction(testData0[i].ideal));
+                success += Math.Abs(output[0] - testData0[i].ideal[0]) < 0.2 ? 1 : 0;
+            }
+
+            Console.WriteLine($"Процент попадания: {(double)success / all * 100}");
+        }
+
+        [TestMethod]
+        public void tempTest()
+        {
+            int sizeOfPic = 64;
+            var network = new BNPNet(ActivationFuncType.LeakyReLU, new int[] { sizeOfPic * sizeOfPic, 100, 100, 2 }, true);
+            string path = @"C:\Users\Bashe\Desktop\somaset\TrainData";
+            int epochs = 400;
+            int sizeOfSmoothKernel = 3;
+
+            var trainData = DirectoryToData(path + "\\1");
+            trainData.AddRange(DirectoryToData(path + "\\0"));
+            //trainData = trainData.Shuffle();
+
+            var losses = network.Train(trainData, BitmapLibrary.SmoothMatrixType.Simple, sizeOfSmoothKernel, epochs, sizeOfPic);
+            Console.WriteLine($"Train losses:");
+            for (int i = 0; i < losses.Length; i++)
+            {
+                Console.WriteLine($"train{trainData[i].ideal[0]} = {losses[i]}");
+            }
+            Console.WriteLine();
+
+            string pathTest = @"C:\Users\Bashe\Desktop\somaset\TestData";
+            var testData1 = DirectoryToData(pathTest + "\\1");
+            var testData0 = DirectoryToData(pathTest + "\\0");
+            int all = testData1.Count + testData0.Count;
+            int success = 0;
+            for (int i = 0; i < testData1.Count; i++)
+            {
+                var bitmap = new Bitmap(testData1[i].picture, sizeOfPic, sizeOfPic).GetBWPicture();
+                var smoothedBWPicture = bitmap.SmoothBWPicture(SmoothMatrixType.Simple, sizeOfSmoothKernel);
+                var gradients = smoothedBWPicture.FindGradients();
+                var gradientsWithSuppressedMaximums = gradients.SuppressMaximums();
+                var cuttedGradients = gradientsWithSuppressedMaximums.BlackEdge(3 / 2 + 1);
+                double[,] doublePic = new double[bitmap.Height, bitmap.Width];
+                for (int y = 0; y < doublePic.GetLength(0); y++)
+                {
+                    for (int x = 0; x < doublePic.GetLength(1); x++)
+                    {
+                        doublePic[y, x] = cuttedGradients[y, x].Length;
+                    }
+                }
+
+                var output = network.GetResult(doublePic.ToVector());
+                Console.WriteLine("loss = " + network.LossFunction(testData1[i].ideal));
+                success += Math.Abs(output[0] - testData1[i].ideal[0]) < 0.2 ? 1 : 0;
+            }
+
+            for (int i = 0; i < testData0.Count; i++)
+            {
+                var bitmap = new Bitmap(testData0[i].picture, sizeOfPic, sizeOfPic).GetBWPicture();
+                var smoothedBWPicture = bitmap.SmoothBWPicture(SmoothMatrixType.Simple, sizeOfSmoothKernel);
+                var gradients = smoothedBWPicture.FindGradients();
+                var gradientsWithSuppressedMaximums = gradients.SuppressMaximums();
+                var cuttedGradients = gradientsWithSuppressedMaximums.BlackEdge(3 / 2 + 1);
+                double[,] doublePic = new double[bitmap.Height, bitmap.Width];
+                for (int y = 0; y < doublePic.GetLength(0); y++)
+                {
+                    for (int x = 0; x < doublePic.GetLength(1); x++)
+                    {
+                        doublePic[y, x] = cuttedGradients[y, x].Length;
+                    }
+                }
+
+                var output = network.GetResult(doublePic.ToVector());
+
+                Console.WriteLine("loss = " + network.LossFunction(testData0[i].ideal));
                 success += Math.Abs(output[0] - testData0[i].ideal[0]) < 0.2 ? 1 : 0;
             }
 

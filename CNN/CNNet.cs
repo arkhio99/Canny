@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 
 namespace NeuralNet
 {
@@ -188,14 +189,14 @@ namespace NeuralNet
         PoolingLayer pl1;
         int poolSize = 3;
 
-        public CNNet(ActivationFuncType type)
+        public CNNet(ActivationFuncType type = ActivationFuncType.Sigmoid,
+            int howFilters1 = 3,
+            int howLayersOnFilter1 = 1,
+            int sizeOfFilter1 = 5,
+            int howFilters2 = 5,
+            int howLayersOnFilter2 = 5,
+            int sizeOfFilter2 = 5)
         {
-            int howFilters1 = 3;
-            int howLayersOnFilter1 = 1;
-            int sizeOfFilter1 = 5;
-            int howFilters2 = 5;
-            int howLayersOnFilter2 = 5;
-            int sizeOfFilter2 = 5;
 
             perceptron = new BNPNet(type, new int[] { 8000, 70, 2 }, true);
 
@@ -210,6 +211,19 @@ namespace NeuralNet
             {
                 cl2.Filters.Add(RandomiseFilter(howLayersOnFilter2, sizeOfFilter2));
             }
+        }
+
+        public CNNet(string input)
+        {
+            string[] percAndOther = input.Split("\nConvolutionLayer1:\n");
+            perceptron = new BNPNet(percAndOther[0]);
+            string[] cl1AndOther = percAndOther[1].Split("\nConvolutionLayer2:\n");
+            cl1 = JsonConvert.DeserializeObject<ConvolutionLayer>(cl1AndOther[0]);
+            string[] cl2AndOther = cl1AndOther[1].Split("\nPoolLayer1:\n");
+            cl2 = JsonConvert.DeserializeObject<ConvolutionLayer>(cl2AndOther[0]);
+            string[] pl1AndOther = cl2AndOther[1].Split("\npoolSize:\n");
+            pl1 = JsonConvert.DeserializeObject<PoolingLayer>(pl1AndOther[0]);
+            poolSize = int.Parse(pl1AndOther[1].Split("\npoolSize:\n")[1]);
         }
 
         public double[,,] RandomiseFilter(int howLayers, int sizeOfLayer)
@@ -228,6 +242,19 @@ namespace NeuralNet
             }
 
             return res;
+        }
+
+        public string Save()
+        {
+            string perceptronString = perceptron.Save();
+            string cl1String = JsonConvert.SerializeObject(cl1);
+            string cl2String = JsonConvert.SerializeObject(cl2);
+            string pl1String = JsonConvert.SerializeObject(pl1);
+            return perceptronString + 
+                "\nConvolutionLayer1:\n" + cl1String + 
+                "\nConvolutionLayer2:\n" + cl2String + 
+                "\nPoolLayer:\n" + pl1String + 
+                "\npoolSize:\n" + poolSize;
         }
     }
 }
