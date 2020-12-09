@@ -278,9 +278,9 @@ namespace UnitTestProject1
             return new NNetData 
             { 
                 ideal = new double[] 
-                { 
+                {
                     Math.Abs(ideal) > 0.001 ? ideal : 0.001,
-                    //Math.Abs(1 - ideal) > 0.001 ? 1 - ideal : 0.001,
+                    Math.Abs(1 - ideal) > 0.001 ? 1 - ideal : 0.001,
                 },
                 picture = new Bitmap(Image.FromFile(path)),
             };
@@ -433,15 +433,15 @@ namespace UnitTestProject1
         public void tempTest()
         {
             int sizeOfPic = 64;
-            var network = new BNPNet(ActivationFuncType.LeakyReLU, new int[] { sizeOfPic * sizeOfPic, 100, 100, 1 }, false);
+            var network = new BNPNet(ActivationFuncType.LeakyReLU, new int[] { sizeOfPic * sizeOfPic, 100, 100, 2 }, false);
             File.WriteAllText(pathToData + @"somaset\network_untrained.json", network.Save());
             //var network = new BNPNet(File.ReadAllText(pathToData + @"somaset\network_untrained.json"));
             string path = pathToData + @"somaset\TrainData";
-            int epochs = 100;
+            int epochs = 200;
 
             var trainData = DirectoryToData(path + "\\1").Take(epochs / 2).ToList();
             trainData.AddRange(DirectoryToData(path + "\\0").Take(epochs / 2).ToList());
-            //trainData = trainData.Shuffle();
+            trainData = trainData.Shuffle();
 
             var losses = Train(network, trainData, epochs);
             Console.WriteLine($"Train losses:");
@@ -454,8 +454,8 @@ namespace UnitTestProject1
             File.WriteAllText(pathToData + @"somaset\network.json", network.Save());
 
             string pathTest = pathToData + @"somaset\TestData";
-            var testData1 = DirectoryToData(pathTest + "\\1");
-            var testData0 = DirectoryToData(pathTest + "\\0");
+            var testData1 = DirectoryToData(pathTest + "\\1").Take(epochs / 80 * 20 / 2).ToList();
+            var testData0 = DirectoryToData(pathTest + "\\0").Take(epochs / 80 * 20 / 2).ToList();
             int all = testData1.Count + testData0.Count;
             int success = 0;
             for (int i = 0; i < testData1.Count; i++)

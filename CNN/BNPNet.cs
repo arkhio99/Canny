@@ -111,7 +111,7 @@ namespace NeuralNet
             DeltaConnections = new List<double[,]>(layers.Length - 1);
             for (int i = 0; i < layers.Length - 1; i++)
             {
-                DeltaConnections.Add(FillWithZeros(new double[Layers[i].Length, Layers[i + 1].Length - (i == layers.Length - 2 ? 0 : 1)]));
+                DeltaConnections.Add(new double[Layers[i].Length, Layers[i + 1].Length - (i == layers.Length - 2 ? 0 : 1)]);
             }
         }
 
@@ -286,13 +286,10 @@ namespace NeuralNet
             {
                 for (int start = 0; start < omegas[l].Length; start++)
                 {
-                    var sum = 0.0;
                     for (int end = 0; end < omegas[l + 1].Length; end++)
                     {
-                        sum += omegas[l + 1][end] * Connections[l][start, end];
-                    }
-                    
-                    omegas[l][start] = SpeedOfLearning * _difActivation(Layers[l][start].Input) * sum;
+                        omegas[l][start] += omegas[l + 1][end] * Connections[l][start, end] * _difActivation(Layers[l][start].Input);
+                    }                    
                 }
             }
 
@@ -304,8 +301,7 @@ namespace NeuralNet
                 {
                     for (int end = 0; end < DeltaConnections[l].GetLength(1); end++)
                     {
-                        //                                                                         TODO Output -> Input
-                        DeltaConnections[l][start, end] = SpeedOfLearning * omegas[l + 1][end] * Layers[l][start].Input + Alpha * DeltaConnections[l][start,end];
+                        DeltaConnections[l][start, end] = SpeedOfLearning * omegas[l + 1][end] * Layers[l][start].Output/* + Alpha * DeltaConnections[l][start,end]*/;
                     }
                 }
             }
@@ -344,7 +340,7 @@ namespace NeuralNet
 
         private double[,] RandomiseArray(double[,] array)
         {
-            var edge = 1.0;
+            var edge = 10.0;
             for (int l = 0; l < Layers.Count; l++)
             {
                 edge *= Layers[l].Length;
@@ -360,29 +356,6 @@ namespace NeuralNet
             }
 
             return array;
-        }
-
-        private double[,] FillWithZeros(double[,] arr)
-        {
-            for (int i = 0; i < arr.GetLength(0); i++)
-            {
-                for (int j = 0; j < arr.GetLength(1); j++)
-                {
-                    arr[i, j] = 0;
-                }
-            }
-
-            return arr;
-        }
-
-        private double[] FillWithZeros(double[] arr)
-        {
-            for (int i = 0; i < arr.Length; i++)
-            {
-                arr[i] = 0;
-            }
-
-            return arr;
         }
     }
 
