@@ -270,7 +270,7 @@ namespace UnitTestProject1
     [TestClass]
     public class BLPNetTests
     {
-        string pathToData =  @"C:\Users\vladb\Desktop\";
+        string pathToData = @"..\..\..\..\";
         private NNetData JpegToData(string path)
         {
             var splited = path.Split('\\');
@@ -384,60 +384,66 @@ namespace UnitTestProject1
         [TestMethod]
         public void TestNet()
         {
-            int sizeOfPic = 64;
-            var network = new BNPNet(File.ReadAllText(pathToData + @"somaset\network.json"));
+            int epochs = 200;
+            var network = new BNPNet(File.ReadAllText(pathToData + @"somaset\Норм\network.json"));
             string pathTest = pathToData + @"somaset\TestData";
-            var testData1 = DirectoryToData(pathTest + "\\1");
-            var testData0 = DirectoryToData(pathTest + "\\0");
+            var testData1 = DirectoryToData(pathTest + "\\1").Take(epochs / 80 * 20 / 2).ToList();
+            var testData0 = DirectoryToData(pathTest + "\\0").Take(epochs / 80 * 20 / 2).ToList();
+            
             int all = testData1.Count + testData0.Count;
             int success = 0;
+            int tp = 0, fp = 0, tn = 0, fn = 0;
             for (int i = 0; i < testData1.Count; i++)
             {
-                var pic = new Bitmap(testData1[i].picture, sizeOfPic, sizeOfPic);
-                double[,] doublePic = new double[pic.Height, pic.Width];
-                for (int y = 0; y < doublePic.GetLength(0); y++)
-                {
-                    for (int x = 0; x < doublePic.GetLength(1); x++)
-                    {
-                        doublePic[y, x] = testData1[i].picture.GetPixel(x, y).R;
-                    }
-                }
+                var testVector = PrepareData(testData1[i].picture);
 
-                var output = network.GetResult(doublePic.ToVector());
-                Console.WriteLine("loss = " + network.LossFunction(testData1[i].ideal));
+                var output = network.GetResult(testVector);
+                Console.WriteLine($"{i}.\tloss{testData1[i].ideal[0]} = " + network.LossFunction(testData1[i].ideal));
                 success += Math.Abs(output[0] - testData1[i].ideal[0]) < 0.2 ? 1 : 0;
+                if (Math.Abs(output[0] - 1) < 0.2)
+                {
+                    tp++;
+                }
+                else
+                {
+                    fn++;
+                }
             }
 
             for (int i = 0; i < testData0.Count; i++)
             {
-                var pic = new Bitmap(testData0[i].picture, sizeOfPic, sizeOfPic);
-                double[,] doublePic = new double[pic.Height, pic.Width];
-                for (int y = 0; y < doublePic.GetLength(0); y++)
-                {
-                    for (int x = 0; x < doublePic.GetLength(1); x++)
-                    {
-                        doublePic[y, x] = testData0[i].picture.GetPixel(x, y).R;
-                    }
-                }
+                var testVector = PrepareData(testData0[i].picture);
 
-                var output = network.GetResult(doublePic.ToVector());
+                var output = network.GetResult(testVector);
 
-                Console.WriteLine("loss = " + network.LossFunction(testData0[i].ideal));
+                Console.WriteLine($"{i}.\tloss{testData0[i].ideal[0]} = " + network.LossFunction(testData0[i].ideal));
                 success += Math.Abs(output[0] - testData0[i].ideal[0]) < 0.2 ? 1 : 0;
+                if (Math.Abs(output[0]) < 0.2)
+                {
+                    tn++;
+                }
+                else
+                {
+                    fp++;
+                }
             }
 
             Console.WriteLine($"Процент попадания: {(double)success / all * 100}");
+            Console.WriteLine($"Правильно положительные = {tp}");
+            Console.WriteLine($"Неправильно положительные = {fn}");
+            Console.WriteLine($"Правильно отрицательные = {tn}");
+            Console.WriteLine($"Неправильно отрицательные = {fp}");
         }
 
         [TestMethod]
         public void tempTest()
         {
             int sizeOfPic = 64;
-            var network = new BNPNet(ActivationFuncType.LeakyReLU, new int[] { sizeOfPic * sizeOfPic, 100, 100, 2 }, false);
+            var network = new BNPNet(ActivationFuncType.LeakyReLU, new int[] { sizeOfPic * sizeOfPic, 100, 100, 100, 2 }, false);
             File.WriteAllText(pathToData + @"somaset\network_untrained.json", network.Save());
             //var network = new BNPNet(File.ReadAllText(pathToData + @"somaset\network_untrained.json"));
             string path = pathToData + @"somaset\TrainData";
-            int epochs = 200;
+            int epochs = 170;
 
             var trainData = DirectoryToData(path + "\\1").Take(epochs / 2).ToList();
             trainData.AddRange(DirectoryToData(path + "\\0").Take(epochs / 2).ToList());
@@ -458,6 +464,7 @@ namespace UnitTestProject1
             var testData0 = DirectoryToData(pathTest + "\\0").Take(epochs / 80 * 20 / 2).ToList();
             int all = testData1.Count + testData0.Count;
             int success = 0;
+            int tp = 0, fp = 0, tn = 0, fn = 0;
             for (int i = 0; i < testData1.Count; i++)
             {
                 var testVector = PrepareData(testData1[i].picture);
@@ -465,6 +472,14 @@ namespace UnitTestProject1
                 var output = network.GetResult(testVector);
                 Console.WriteLine("loss = " + network.LossFunction(testData1[i].ideal));
                 success += Math.Abs(output[0] - testData1[i].ideal[0]) < 0.2 ? 1 : 0;
+                if (Math.Abs(output[0] - testData1[i].ideal[0]) < 0.2)
+                {
+                    tp++;
+                }
+                else
+                {
+                    fn++;
+                }
             }
 
             for (int i = 0; i < testData0.Count; i++)
@@ -475,9 +490,22 @@ namespace UnitTestProject1
 
                 Console.WriteLine("loss = " + network.LossFunction(testData0[i].ideal));
                 success += Math.Abs(output[0] - testData0[i].ideal[0]) < 0.2 ? 1 : 0;
+                if (Math.Abs(output[0] - testData0[i].ideal[0]) < 0.2)
+                {
+                    tn++;
+                }
+                else
+                {
+                    fp++;
+                }
             }
 
             Console.WriteLine($"Процент попадания: {(double)success / all * 100}");
+            Console.WriteLine($"Правильно положительные = {tp}");
+            Console.WriteLine($"Неправильно положительные = {fn}");
+            Console.WriteLine($"Правильно отрицательные = {tn}");
+            Console.WriteLine($"Неправильно отрицательные = {fp}");
+
         }
 
         private double[] Train(BNPNet net, List<NNetData> trainingDatas, int epochs)

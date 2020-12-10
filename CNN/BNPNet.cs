@@ -54,12 +54,12 @@ namespace NeuralNet
         /// <summary>
         /// Скорость обучения
         /// </summary>
-        public double SpeedOfLearning { get; set; } = 0.5;
+        public double SpeedOfLearning { get; set; } = 0.6;
 
         /// <summary>
         /// Скорость прироста
         /// </summary>
-        public double Alpha { get; set; } = 0.3;
+        public double Alpha { get; set; } = 0.2;
 
         /// <summary>
         /// Слои нейронов
@@ -301,7 +301,7 @@ namespace NeuralNet
                 {
                     for (int end = 0; end < DeltaConnections[l].GetLength(1); end++)
                     {
-                        DeltaConnections[l][start, end] = SpeedOfLearning * omegas[l + 1][end] * Layers[l][start].Output/* + Alpha * DeltaConnections[l][start,end]*/;
+                        DeltaConnections[l][start, end] -= SpeedOfLearning * omegas[l + 1][end] * Layers[l][start].Output + Alpha * DeltaConnections[l][start,end];
                     }
                 }
             }
@@ -340,7 +340,7 @@ namespace NeuralNet
 
         private double[,] RandomiseArray(double[,] array)
         {
-            var edge = 10.0;
+            var edge = 100.0;
             for (int l = 0; l < Layers.Count; l++)
             {
                 edge *= Layers[l].Length;
@@ -356,22 +356,6 @@ namespace NeuralNet
             }
 
             return array;
-        }
-    }
-
-    public static class ArrayExtensions
-    {
-        public static T[] ToVector<T>(this T[,] arr)
-        {
-            T[] res = new T[arr.Length];
-            for (int i = 0; i < arr.GetLength(0); i++)
-            {
-                for (int j = 0; j < arr.GetLength(1); j++)
-                {
-                    res[i * arr.GetLength(1) + j] = arr[i, j];
-                }
-            }
-            return res;
         }
     }
 }

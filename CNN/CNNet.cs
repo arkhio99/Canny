@@ -100,6 +100,18 @@ namespace NeuralNet
 
             return res;
         }
+
+        public double[,,] BackPropagation(double[,,] dy)
+        {
+            var dx = GetResult(dy);
+            for (int f = 0; f < Filters.Count; f++)
+            {
+                var dw = ReverseConvolution(dy, Filters[f]);
+                Filters[f] = Filters[f].Plus(dw);
+            }
+
+            return dx;
+        }
     }
 
     internal class PoolingLayer
@@ -185,9 +197,12 @@ namespace NeuralNet
     public class CNNet
     {
         BNPNet perceptron;
+        public ActivationFuncType ActivationType { get; private set; }
         ConvolutionLayer cl1, cl2;
         PoolingLayer pl1;
         int poolSize = 3;
+        private Func<double, double> _activation { get; set; }
+        private Func<double, double> _difActivation { get; set; }
 
         public CNNet(ActivationFuncType type = ActivationFuncType.Sigmoid,
             int howFilters1 = 3,
@@ -197,7 +212,8 @@ namespace NeuralNet
             int howLayersOnFilter2 = 5,
             int sizeOfFilter2 = 5)
         {
-
+            ActivationType = type;
+            SetActivationFunc(type);
             perceptron = new BNPNet(type, new int[] { 8000, 70, 2 }, true);
 
             cl1.Filters = new List<double[,,]>(howFilters1);
@@ -213,17 +229,16 @@ namespace NeuralNet
             }
         }
 
+
         public CNNet(string input)
         {
-            string[] percAndOther = input.Split("\nConvolutionLayer1:\n");
-            perceptron = new BNPNet(percAndOther[0]);
-            string[] cl1AndOther = percAndOther[1].Split("\nConvolutionLayer2:\n");
-            cl1 = JsonConvert.DeserializeObject<ConvolutionLayer>(cl1AndOther[0]);
-            string[] cl2AndOther = cl1AndOther[1].Split("\nPoolLayer1:\n");
-            cl2 = JsonConvert.DeserializeObject<ConvolutionLayer>(cl2AndOther[0]);
-            string[] pl1AndOther = cl2AndOther[1].Split("\npoolSize:\n");
-            pl1 = JsonConvert.DeserializeObject<PoolingLayer>(pl1AndOther[0]);
-            poolSize = int.Parse(pl1AndOther[1].Split("\npoolSize:\n")[1]);
+            var obj = JsonConvert.DeserializeObject<CNNet>(input);
+            perceptron = obj.perceptron;
+            ActivationType = obj.ActivationType;
+            cl1 = obj.cl1;
+            cl2 = obj.cl2;
+            pl1 = obj.pl1;
+            poolSize = obj.poolSize;
         }
 
         public double[,,] RandomiseFilter(int howLayers, int sizeOfLayer)
@@ -236,7 +251,7 @@ namespace NeuralNet
                 {
                     for (int j = 0; j < res.GetLength(2); j++)
                     {
-                        res[l, i, j] = rand.NextDouble() % 0.5; 
+                        res[l, i, j] = rand.NextDouble() % 0.5 - 0.5; 
                     }
                 }
             }
@@ -246,15 +261,91 @@ namespace NeuralNet
 
         public string Save()
         {
-            string perceptronString = perceptron.Save();
-            string cl1String = JsonConvert.SerializeObject(cl1);
-            string cl2String = JsonConvert.SerializeObject(cl2);
-            string pl1String = JsonConvert.SerializeObject(pl1);
-            return perceptronString + 
-                "\nConvolutionLayer1:\n" + cl1String + 
-                "\nConvolutionLayer2:\n" + cl2String + 
-                "\nPoolLayer:\n" + pl1String + 
-                "\npoolSize:\n" + poolSize;
+            return JsonConvert.SerializeObject(this);
+        }
+
+        public double[] GetResult(double[,,] input)
+        {
+            cl1.Inputs = input;
+            List<double[,,]> inputOnCl2 = new List<double[,,]>();
+            for (int f = 0; f < cl1.Filters.Count; f++)
+            {
+                inputOnCl2.Add(Activate(cl1.GetResult(cl1.Filters[f])));
+            }
+
+            cl2.Inputs = ListToArray(inputOnCl2);
+            
+            List<double[,,]> inputOnPl1 = new List<double[,,]>();
+            for (int f = 0; f < cl2.Filters.Count; f++)
+            {
+                inputOnPl1.Add(Activate(cl2.GetResult(cl1.Filters[f])));
+            }
+
+            var outOnPl1 = pl1.GetResult(ListToArray(inputOnPl1));
+
+            return perceptron.GetResult(outOnPl1.ToVector());            
+        }
+
+        public double[,,] BackPropagation(double[] ideal)
+        {
+            var deltasOnPercInp = perceptron.BackPropagation(ideal);
+            var deltaOnPl1Inp = pl1.UpSample(
+                deltasOnPercInp.ToArray3(
+                    pl1.HowLayers,
+                    pl1.MaxPositions.GetLength(0),
+                    pl1.MaxPositions.GetLength(1)));
+            var deltaOnCl2Inp = cl2.BackPropagation(deltaOnPl1Inp);
+            var deltaOnCl1Inp = cl1.BackPropagation(deltaOnCl2Inp);
+
+            return deltaOnCl1Inp;
+        }
+
+        private double[,,] Activate(double[,,] input)
+        {
+            for (int l = 0; l < input.GetLength(0); l++)
+            {
+                for (int y = 0; y < input.GetLength(1); y++)
+                {
+                    for (int x = 0; x < input.GetLength(2); x++)
+                    {
+                        input[l, y, x] = _activation(input[l, y, x]);
+                    }
+                }
+            }
+
+            return input;
+        }
+
+        private void SetActivationFunc(ActivationFuncType type)
+        {
+            switch (type)
+            {
+                case ActivationFuncType.LeakyReLU:
+                    _activation = (x) => Math.Max(0.1 * x, x);
+                    _difActivation = (x) => x > 0.1 * x ? 1 : 0.1;
+                    break;
+                case ActivationFuncType.Sigmoid:
+                    _activation = (x) => 1 / (1 + Math.Exp(-x));
+                    _difActivation = (x) => _activation(x) * (1 - _activation(x));
+                    break;
+            }
+        }
+
+        private double[,,] ListToArray(List<double[,,]> init)
+        {
+            var res = new double[init.Count, init[0].GetLength(1), init[0].GetLength(2)];
+            for (int l = 0; l < init.Count; l++)
+            {
+                for (int y = 0; y < init[0].GetLength(1); y++)
+                {
+                    for (int x = 0; x < init[0].GetLength(2); x++)
+                    {
+                        res[l, y, x] = init[l][0,y, x];
+                    }
+                }
+            }
+
+            return res;
         }
     }
 }
