@@ -301,7 +301,7 @@ namespace NeuralNet
                 {
                     for (int end = 0; end < DeltaConnections[l].GetLength(1); end++)
                     {
-                        DeltaConnections[l][start, end] -= SpeedOfLearning * omegas[l + 1][end] * Layers[l][start].Output + Alpha * DeltaConnections[l][start,end];
+                        DeltaConnections[l][start, end] += SpeedOfLearning * omegas[l + 1][end] * Layers[l][start].Output + Alpha * DeltaConnections[l][start,end];
                     }
                 }
             }
@@ -340,18 +340,19 @@ namespace NeuralNet
 
         private double[,] RandomiseArray(double[,] array)
         {
-            var edge = 100.0;
+            var div = 1.0;
+            var edge = 1.0;
             for (int l = 0; l < Layers.Count; l++)
             {
-                edge *= Layers[l].Length;
+                div *= Layers[l].Length;
             }
-            edge = 1 / edge;
+            edge /= div;
             Random random = new Random();
             for (int i = 0; i < array.GetLength(0); i++)
             {
                 for (int j = 0; j < array.GetLength(1); j++)
                 {
-                    array[i, j] = random.NextDouble() % (2 * edge) - edge/*(random.Next() % 3 + 1) * random.NextDouble() * (random.NextDouble() > 0.5 ? 1 : -1)*/;
+                    array[i, j] = random.NextDouble() % (2 * edge) - edge;/**/
                 }
             }
 

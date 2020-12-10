@@ -6,6 +6,12 @@ namespace NeuralNet
 {
     public static class ArrayExtensions
     {
+        /// <summary>
+        /// Преообразует двумерный массив в одномерный
+        /// </summary>
+        /// <typeparam name="T">Тип массива</typeparam>
+        /// <param name="arr">Двумерный массив</param>
+        /// <returns>Одномерный массив</returns>
         public static T[] ToVector<T>(this T[,] arr)
         {
             T[] res = new T[arr.Length];
@@ -19,6 +25,11 @@ namespace NeuralNet
             return res;
         }
 
+        /// <summary>
+        /// Преобразует трёхмерный массив в одномерный</summary>
+        /// <typeparam name="T">Тип массива</typeparam>
+        /// <param name="arr">Исходный трёхмерный массив</param>
+        /// <returns>Результирующий одномерный массив</returns>
         public static T[] ToVector<T>(this T[,,] arr)
         {
             T[] res = new T[arr.Length];
@@ -36,7 +47,16 @@ namespace NeuralNet
             return res;
         }
 
-        public T[,,] ToArray3<T>(this T[] init, int howZ, int howY, int howX)
+        /// <summary>
+        /// Преобразует одномерный массив в трёхмерный с заданными размерами
+        /// </summary>
+        /// <typeparam name="T">Тип массива</typeparam>
+        /// <param name="init">Исходный одномерный массив</param>
+        /// <param name="howZ">Количество слоёв массива</param>
+        /// <param name="howY">Высота слоя массива</param>
+        /// <param name="howX">Ширина слоя массива</param>
+        /// <returns>Результирующий трёхмерный массив</returns>
+        public static T[,,] ToArray3<T>(this T[] init, int howZ, int howY, int howX)
         {
             var res = new T[howZ,howY,howX];
             
@@ -54,6 +74,12 @@ namespace NeuralNet
             return res;
         }
 
+        /// <summary>
+        /// Суммирует трёхмерные массивы
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b">Массив, который надо прибавить</param>
+        /// <returns>Сумма массивов</returns>
         public static double[,,] Plus(this double[,,] a, double[,,] b)
         {
             for (int l = 0; l < a.GetLength(0); l++)

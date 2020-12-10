@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Canny", "Canny\Canny.csproj
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NeuralNet", "CNN\NeuralNet.csproj", "{C45CE29A-A658-4360-B42F-4175A237330E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UnitTestProject1", "UnitTestProject1\UnitTestProject1.csproj", "{9CEF0804-16A5-4A9A-9B6B-077D0C8F7CC7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NeuralNet.Tests", "UnitTestProject1\NeuralNet.Tests.csproj", "{9CEF0804-16A5-4A9A-9B6B-077D0C8F7CC7}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BitmapLibrary", "BitmapLibrary\BitmapLibrary.csproj", "{AECC7E0D-A162-4D5D-90BB-5240A27FA477}"
 EndProject
