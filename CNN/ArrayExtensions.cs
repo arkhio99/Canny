@@ -74,6 +74,20 @@ namespace NeuralNet
             return res;
         }
 
+        public static T[,,] To3DArray<T>(this T[,] ar)
+        {
+            T[,,] res = new T[1, ar.GetLength(0), ar.GetLength(1)];
+            for (int i = 0; i < res.GetLength(1); i++)
+            {
+                for (int j = 0; j < res.GetLength(2); j++)
+                {
+                    res[0, i, j] = ar[i, j];
+                }
+            }
+
+            return res;
+        }
+
         /// <summary>
         /// Суммирует трёхмерные массивы
         /// </summary>
@@ -94,6 +108,20 @@ namespace NeuralNet
             }
 
             return a;
+        }
+
+        public static double[,] GetLayer(this double[,,] ar, int l)
+        {
+            double[,] res = new double[ar.GetLength(1), ar.GetLength(2)];
+            for (int i = 0; i < res.GetLength(1); i++)
+            {
+                for (int j = 0; j < res.GetLength(2); j++)
+                {
+                    res[i, j] = ar[l, i, j];
+                }
+            }
+
+            return res;
         }
     }
 }

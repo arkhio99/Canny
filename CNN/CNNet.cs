@@ -107,18 +107,17 @@ namespace NeuralNet
             return res;
         }
 
-        // TODO Доделать (чёрт знает что происходит)
         public double[,,] BackPropagation(double[,,] dy)
         {
-            List<double[,,]> dx = new List<double[,,]>(Inputs.GetLength(0));
-            for (int l = 0; l < Inputs.GetLength(0); l++)
-            {
-                var dx = ReverseConvolution(dy, );
-            }
+            var dx = new double[Inputs.GetLength(0), Inputs.GetLength(1), Inputs.GetLength(2)];
             for (int f = 0; f < Filters.Count; f++)
             {
-                var dw = Convolution(Filters[f]);
+                var dyForLayerF = dy.GetLayer(f).To3DArray();                
+                var dw = Convolution(dyForLayerF);
+                var dxTemp = ReverseConvolution(dy, Filters[f]);
+
                 Filters[f] = Filters[f].Plus(dw);
+                dx = dx.Plus(dxTemp);
             }
 
             return dx;
