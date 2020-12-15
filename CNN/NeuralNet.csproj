@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BitmapLibrary\BitmapLibrary.csproj" />
+    <ProjectReference Include="..\Perceptron\Perceptron.csproj" />
   </ItemGroup>
 
 </Project>

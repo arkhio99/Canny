@@ -113,9 +113,9 @@ namespace NeuralNet
         public static double[,] GetLayer(this double[,,] ar, int l)
         {
             double[,] res = new double[ar.GetLength(1), ar.GetLength(2)];
-            for (int i = 0; i < res.GetLength(1); i++)
+            for (int i = 0; i < res.GetLength(0); i++)
             {
-                for (int j = 0; j < res.GetLength(2); j++)
+                for (int j = 0; j < res.GetLength(1); j++)
                 {
                     res[i, j] = ar[l, i, j];
                 }

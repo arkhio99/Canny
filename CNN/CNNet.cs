@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using NeuralNetworks;
 using Newtonsoft.Json;
 
 namespace NeuralNet
@@ -51,9 +52,9 @@ namespace NeuralNet
         {
             // по умолчанию массив заполняется нулями 
             var newInit = new double[
-                init.GetLength(0) + filter.GetLength(0) / 2 * 2,
-                init.GetLength(1) + filter.GetLength(1) / 2 * 2,
-                init.GetLength(2) + filter.GetLength(2) / 2 * 2];
+                init.GetLength(0) + 2 * filter.GetLength(0) - 2,
+                init.GetLength(1) + 2 * filter.GetLength(1) - 2,
+                init.GetLength(2) + 2 * filter.GetLength(2) - 2];
 
             for (int l = 0; l < init.GetLength(0); l++)
             {
@@ -61,9 +62,9 @@ namespace NeuralNet
                 {
                     for (int x = 0; x < init.GetLength(2); x++)
                     {
-                        newInit[l + filter.GetLength(0) / 2,
-                            y + filter.GetLength(1) / 2,
-                            x + filter.GetLength(2) / 2] = 
+                        newInit[l + filter.GetLength(0) - 1,
+                            y + filter.GetLength(1) - 1,
+                            x + filter.GetLength(2) - 1] = 
                             init[l, y, x];
                     }
                 }
@@ -72,9 +73,9 @@ namespace NeuralNet
             init = newInit;
 
             var res = new double[
-                init.GetLength(0) - filter.GetLength(0) + 1,
-                init.GetLength(1) - filter.GetLength(1) + 1,
-                init.GetLength(2) - filter.GetLength(2) + 1];
+                Inputs.GetLength(0),
+                Inputs.GetLength(1),
+                Inputs.GetLength(2)];
 
             for (int l = 0; l < res.GetLength(0); l++)
             {
@@ -241,12 +242,12 @@ namespace NeuralNet
 
     public class CNNet
     {
-        BNPNet perceptron;
+        Perceptron perceptron;
 
         /// <summary>
         /// Тип функции активации
         /// </summary>
-        public ActivationFuncType ActivationType { get; private set; }
+        public ActivationFunctionType ActivationType { get; private set; }
 
         /// <summary>
         /// Первый слой свёртки
@@ -278,7 +279,7 @@ namespace NeuralNet
         /// <param name="howLayersOnFilter2">Количество слоёв на фильтрах второго слоя свёртки</param>
         /// <param name="sizeOfFilter2">Размер слоя фильтра второго слоя свёртки</param>
         /// <param name="howOnHiddenLayer">Количество нейронов на скрытом слое</param>
-        public CNNet(ActivationFuncType type = ActivationFuncType.Sigmoid,
+        public CNNet(ActivationFunctionType type = ActivationFunctionType.Sigmoid,
             int sizeOfPic = 128,
             int howFilters1 = 3,
             int howLayersOnFilter1 = 1,
@@ -293,7 +294,7 @@ namespace NeuralNet
 
             var size_inp = (sizeOfPic - sizeOfFilter1 + 1 - sizeOfFilter2 + 1) / poolSize;
             var layers_inp = 1 * howFilters1 / howLayersOnFilter2 * howFilters2;
-            perceptron = new BNPNet(type, new int[] { size_inp * size_inp * layers_inp, howOnHiddenLayer, 2 }, true);
+            perceptron = new Perceptron(type, new int[] { size_inp * size_inp * layers_inp, howOnHiddenLayer, 1 }, false, 0.8, 0.3);
 
             cl1 = new ConvolutionLayer();
             cl1.Filters = new List<double[,,]>(howFilters1);
@@ -320,8 +321,8 @@ namespace NeuralNet
             cl1 = JsonConvert.DeserializeObject<ConvolutionLayer>(dict["ConvolutionLayer1"]);
             cl2 = JsonConvert.DeserializeObject<ConvolutionLayer>(dict["ConvolutionLayer2"]);
             pl1 = JsonConvert.DeserializeObject<PoolingLayer>(dict["PoolingLayer1"]);
-            perceptron = new BNPNet(dict["perceptron"]);
-            ActivationType = (ActivationFuncType)Enum.Parse(ActivationType.GetType(), dict["ActivationType"]);
+            perceptron = Perceptron.FromJson(dict["perceptron"]);
+            ActivationType = (ActivationFunctionType)Enum.Parse(ActivationType.GetType(), dict["ActivationType"]);
             SetActivationFunc(ActivationType);
             poolSize = int.Parse(dict["poolSize"]);
         }
@@ -367,8 +368,9 @@ namespace NeuralNet
 
             pl1 = new PoolingLayer(1, 3);
             var outOnPl1 = pl1.GetResult(ListToArray(inputOnPl1));
+            var activeFromPl1 = Activate(outOnPl1);
 
-            return perceptron.GetResult(outOnPl1.ToVector());            
+            return perceptron.GetResult(activeFromPl1.ToVector(), outOnPl1.ToVector());            
         }
 
         /// <summary>
@@ -425,15 +427,15 @@ namespace NeuralNet
         /// Устанавливает другую функцию активации
         /// </summary>
         /// <param name="type">Тип функции активации</param>
-        private void SetActivationFunc(ActivationFuncType type)
+        private void SetActivationFunc(ActivationFunctionType type)
         {
             switch (type)
             {
-                case ActivationFuncType.LeakyReLU:
+                case ActivationFunctionType.LeakyReLU:
                     _activation = (x) => Math.Max(0.1 * x, x);
                     _difActivation = (x) => x > 0.1 * x ? 1 : 0.1;
                     break;
-                case ActivationFuncType.Sigmoid:
+                case ActivationFunctionType.Sigmoid:
                     _activation = (x) => 1 / (1 + Math.Exp(-x));
                     _difActivation = (x) => _activation(x) * (1 - _activation(x));
                     break;

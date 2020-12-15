@@ -6,11 +6,18 @@ using System.IO;
 using System.Linq;
 using System;
 using BitmapLibrary;
+using NeuralNetworks;
 
 namespace NeuralNet.Tests
 {
+    public class NNetData
+    {
+        public double[] ideal;
+        public Bitmap picture;
+    }
+
     [TestClass]
-    public class BNPNetTests
+    public class PerceptronTests
     {
         string pathToData = @"..\..\..\..\";
         private NNetData JpegToData(string path)
@@ -72,8 +79,8 @@ namespace NeuralNet.Tests
         [TestMethod]
         public void CanSaveTest()
         {
-            var network = new BNPNet(ActivationFuncType.LeakyReLU,
-                new int[] { 2, 3, 1 });
+            var network = new Perceptron(ActivationFunctionType.LeakyReLU,
+                new int[] { 2, 3, 1 }, false, 0.8, 0.3);
 
             File.WriteAllText("saveblp.json", network.Save());
         }
@@ -81,8 +88,8 @@ namespace NeuralNet.Tests
         [TestMethod]
         public void CanGetResult()
         {
-            var network = new BNPNet(ActivationFuncType.Sigmoid,
-                new int[] { 2, 3, 1 }, true);
+            var network = new Perceptron(ActivationFunctionType.Sigmoid,
+                new int[] { 2, 3, 1 }, true, 0.8, 0.3);
 
             var input = new double[] { 0, 1 };
 
@@ -90,7 +97,7 @@ namespace NeuralNet.Tests
 
             var expected = network.GetResult(input);
 
-            network = new BNPNet(File.ReadAllText("saveblp.json"));
+            network = Perceptron.FromJson(File.ReadAllText("saveblp.json"));
             var actual = network.GetResult(input);
 
             for (int i = 0; i < expected.Length; i++)
@@ -106,13 +113,13 @@ namespace NeuralNet.Tests
 
             double cur = 0;
             double last = 0;
-            BNPNet net = new BNPNet(File.ReadAllText("saveblp.json"));
+            Perceptron net = Perceptron.FromJson(File.ReadAllText("saveblp.json"));
             var input = Enumerable.Range(1, howInput).Select(n => (double)n).ToArray();
             var ideal = new double[] { 1.5 };
             while (cur <= last)
             {
-                net = new BNPNet(ActivationFuncType.Sigmoid,
-                  new int[] { howInput, 50, 50, 50, 1 });
+                net = new Perceptron(ActivationFunctionType.Sigmoid,
+                  new int[] { howInput, 50, 50, 50, 1 }, false, 0.8, 0.3);
                 net.GetResult(input);
                 cur = net.LossFunction(ideal);
                 System.Console.WriteLine(cur);
@@ -124,7 +131,7 @@ namespace NeuralNet.Tests
             }
             File.WriteAllText("saveblp.net", net.Save());
 
-            net = new BNPNet(File.ReadAllText("saveblp.json"));
+            net = Perceptron.FromJson(File.ReadAllText("saveblp.json"));
             net.GetResult(input);
             cur = net.LossFunction(ideal);
             System.Console.WriteLine(cur);
@@ -139,7 +146,7 @@ namespace NeuralNet.Tests
         public void TrainNet()
         {
             int sizeOfPic = 64;
-            var network = new BNPNet(ActivationFuncType.LeakyReLU, new int[] { sizeOfPic * sizeOfPic, 100, 100, 2 }, true);
+            var network = new Perceptron(ActivationFunctionType.LeakyReLU, new int[] { sizeOfPic * sizeOfPic, 100, 100, 2 }, true, 0.8, 0.3);
             string path = pathToData + @"somaset\TrainData";
             int epochs = 400;
 
@@ -155,7 +162,7 @@ namespace NeuralNet.Tests
         public void TestNet()
         {
             int epochs = 200;
-            var network = new BNPNet(File.ReadAllText(pathToData + @"somaset\Норм\network.json"));
+            var network = Perceptron.FromJson(File.ReadAllText(pathToData + @"somaset\Норм\network.json"));
             string pathTest = pathToData + @"somaset\TestData";
             var testData1 = DirectoryToData(pathTest + "\\1", epochs / 80 * 20 / 2).ToList();
             var testData0 = DirectoryToData(pathTest + "\\0", epochs / 80 * 20 / 2).ToList();
@@ -209,11 +216,11 @@ namespace NeuralNet.Tests
         public void tempTest()
         {
             int sizeOfPic = 64;
-            var network = new BNPNet(ActivationFuncType.Sigmoid, new int[] { sizeOfPic * sizeOfPic, 100, 100, 100, 2 }, false);
+            var network = new Perceptron(ActivationFunctionType.Sigmoid, new int[] { sizeOfPic * sizeOfPic, 100, 100, 100, 2 }, false, 0.8, 0.3);
             File.WriteAllText(pathToData + @"somaset\network_untrained.json", network.Save());
-            //var network = new BNPNet(File.ReadAllText(pathToData + @"somaset\network_untrained.json"));
+            //var network = new Perceptron(File.ReadAllText(pathToData + @"somaset\network_untrained.json"));
             string path = pathToData + @"somaset\TrainData";
-            int epochs = 170;
+            int epochs = 100;
 
             var trainData = DirectoryToData(path + "\\1", epochs / 2).ToList();
             trainData.AddRange(DirectoryToData(path + "\\0", epochs / 2).ToList());
@@ -278,7 +285,7 @@ namespace NeuralNet.Tests
 
         }
 
-        private double[] Train(BNPNet net, List<NNetData> trainingDatas, int epochs)
+        private double[] Train(Perceptron net, List<NNetData> trainingDatas, int epochs)
         {
             double[] loss = new double[Math.Min(trainingDatas.Count, epochs)];
             for (int i = 0; i < trainingDatas.Count && i < epochs; i++)

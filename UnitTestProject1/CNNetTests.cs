@@ -278,15 +278,15 @@ namespace NeuralNet.Tests
             string toFile = pathToData + @"somaset\TrainData\1\im0002.jpg";
             var pic = JpegToData(toFile).picture;
             var testVector = PrepareData(pic, 128);
-            var ideal = new double[] { 1, 0 };
+            var ideal = new double[] { 0.8 };
 
             var actual = net.GetResult(testVector);
-            Console.WriteLine($"Loss = {net.LossFunction(new double[] { 1, 0 })}");
+            Console.WriteLine($"Loss = {net.LossFunction(ideal)}");
 
             net.BackPropagation(ideal);
 
             actual = net.GetResult(testVector);
-            Console.WriteLine($"Loss = {net.LossFunction(new double[] { 1, 0 })}");
+            Console.WriteLine($"Loss = {net.LossFunction(ideal)}");
         }
 
         private NNetData JpegToData(string path)

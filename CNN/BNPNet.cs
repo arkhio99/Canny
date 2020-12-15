@@ -20,11 +20,7 @@ namespace NeuralNet
         Sigmoid,
     }
 
-    public class NNetData
-    {
-        public double[] ideal;
-        public Bitmap picture;
-    }
+    
 
     public class BNPNet
     {
