@@ -21,5 +21,22 @@ namespace NeuralNet
 
             return list;
         }
+
+        public static List<T> OneByOne<T>(List<T> a, List<T> b)
+        {
+            if (a.Count != b.Count)
+            {
+                throw new ArgumentException("Длины массивов не совпадают");
+            }
+
+            var res = new List<T>(a.Count * 2);
+            for (int i = 0; i < a.Count; i++)
+            {
+                res.Add(a[i]);
+                res.Add(b[i]);
+            }
+
+            return res;
+        }
     }
 }

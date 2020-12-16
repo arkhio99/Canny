@@ -94,7 +94,7 @@ namespace NeuralNet
         /// <param name="a"></param>
         /// <param name="b">Массив, который надо прибавить</param>
         /// <returns>Сумма массивов</returns>
-        public static double[,,] Plus(this double[,,] a, double[,,] b)
+        public static double[,,] Plus(this double[,,] a, double[,,] b, double coeff = 1)
         {
             for (int l = 0; l < a.GetLength(0); l++)
             {
@@ -102,7 +102,7 @@ namespace NeuralNet
                 {
                     for (int x = 0; x < a.GetLength(2); x++)
                     {
-                        a[l, y, x] += b[l, y, x];
+                        a[l, y, x] += coeff * b[l, y, x];
                     }
                 }
             }

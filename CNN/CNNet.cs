@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using NeuralNetworks;
 using Newtonsoft.Json;
 
@@ -9,6 +10,8 @@ namespace NeuralNet
     {
         public double[,,] Inputs { get; set; }
         public List<double[,,]> Filters { get; set; }
+
+        public double Epsilon { get; set; } = 1;
 
         public double[,,] GetResult(double[,,] filter)
         {
@@ -117,7 +120,7 @@ namespace NeuralNet
                 var dw = Convolution(dyForLayerF);
                 var dxTemp = ReverseConvolution(dy, Filters[f]);
 
-                Filters[f] = Filters[f].Plus(dw);
+                Filters[f] = Filters[f].Plus(dw, Epsilon);
                 dx = dx.Plus(dxTemp);
             }
 
@@ -278,7 +281,7 @@ namespace NeuralNet
         /// <param name="howFilters2">Количество фильтров на втором слое свёртки</param>
         /// <param name="howLayersOnFilter2">Количество слоёв на фильтрах второго слоя свёртки</param>
         /// <param name="sizeOfFilter2">Размер слоя фильтра второго слоя свёртки</param>
-        /// <param name="howOnHiddenLayer">Количество нейронов на скрытом слое</param>
+        /// <param name="howOnHiddenLayer1">Количество нейронов на скрытом слое</param>
         public CNNet(ActivationFunctionType type = ActivationFunctionType.Sigmoid,
             int sizeOfPic = 128,
             int howFilters1 = 3,
@@ -287,16 +290,23 @@ namespace NeuralNet
             int howFilters2 = 5,
             int howLayersOnFilter2 = 3,
             int sizeOfFilter2 = 5,
-            int howOnHiddenLayer = 70)
+            int[] neuronsPerHiddenLayer = null,
+            int howOutputs = 1)
         {
             ActivationType = type;
             SetActivationFunc(type);
+            var eps = 0.01;
 
             var size_inp = (sizeOfPic - sizeOfFilter1 + 1 - sizeOfFilter2 + 1) / poolSize;
             var layers_inp = 1 * howFilters1 / howLayersOnFilter2 * howFilters2;
-            perceptron = new Perceptron(type, new int[] { size_inp * size_inp * layers_inp, howOnHiddenLayer, 1 }, false, 0.8, 0.3);
+
+            var neuronsPerLayer = neuronsPerHiddenLayer.ToList();
+            neuronsPerLayer.Insert(0, size_inp * size_inp * layers_inp);
+            neuronsPerLayer.Add(howOutputs);
+            perceptron = new Perceptron(type, neuronsPerLayer.ToArray(), false, eps , 0.005);
 
             cl1 = new ConvolutionLayer();
+            cl1.Epsilon = eps;
             cl1.Filters = new List<double[,,]>(howFilters1);
             for (int i = 0; i < howFilters1; i++)
             {
@@ -304,6 +314,7 @@ namespace NeuralNet
             }
 
             cl2 = new ConvolutionLayer();
+            cl2.Epsilon = eps;
             cl2.Filters = new List<double[,,]>(howFilters2);
             for (int i = 0; i < howFilters2; i++)
             {
@@ -480,7 +491,7 @@ namespace NeuralNet
                 {
                     for (int j = 0; j < res.GetLength(2); j++)
                     {
-                        res[l, i, j] = rand.NextDouble() % 1 - 0.5;
+                        res[l, i, j] = rand.NextDouble() - 0.5;
                     }
                 }
             }

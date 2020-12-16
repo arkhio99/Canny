@@ -180,8 +180,8 @@ namespace NeuralNetworks
                 {
                     for (int j = 0; j < DeltaW[l].GetLength(1); j++)
                     {
-                        DeltaW[l][i,j] = Epsilon * deltas[l + 1][j] * L[l][i].Out;
-                        W[l][i,j] += DeltaW[l][i,j] + Alpha *W[l][i, j];
+                        DeltaW[l][i,j] = Epsilon * deltas[l + 1][j] * L[l][i].Out + Alpha * DeltaW[l][i, j];
+                        W[l][i,j] += DeltaW[l][i,j];
                     }
                 }
             }
@@ -246,7 +246,7 @@ namespace NeuralNetworks
         private double[,] RandomiseArray(int r, int c)
         {
             double[,] res = new double[r, c];
-            double edge = 1;
+            double edge = 10;
             foreach(var layer in L)
             {
                 edge /= layer.Length;
@@ -258,7 +258,7 @@ namespace NeuralNetworks
             {
                 for (int j = 0; j < res.GetLength(1); j++)
                 {
-                    res[i, j] = rand.NextDouble() % (2 * edge) - edge;
+                    res[i, j] = rand.NextDouble() - 0.5; //% (2 * edge) - edge;
                 }
             }
 

@@ -1,5 +1,6 @@
 ﻿using BitmapLibrary;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using NeuralNetworks;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -298,7 +299,6 @@ namespace NeuralNet.Tests
                 ideal = new double[]
                 {
                     Math.Abs(ideal) > 0.001 ? ideal : 0.001,
-                    Math.Abs(1 - ideal) > 0.001 ? 1 - ideal : 0.001,
                 },
                 picture = new Bitmap(Image.FromFile(path)),
             };
@@ -326,6 +326,124 @@ namespace NeuralNet.Tests
         }
 
         private List<NNetData> DirectoryToData(string path, int epochs)
+        {
+            var dir = new DirectoryInfo(path);
+            var files = dir.GetFiles();
+            var res = new List<NNetData>(files.Length);
+            foreach (var file in files)
+            {
+                if (epochs < 0)
+                {
+                    break;
+                }
+
+                epochs--;
+                res.Add(JpegToData(file.FullName));
+            }
+
+            return res;
+        }
+
+        [TestMethod]
+        public void tempTest()
+        {
+            int sizeOfPic = 65;
+            int epochs = 400;
+
+            var network = new CNNet(ActivationFunctionType.Sigmoid, sizeOfPic, 3, 1, 5, 5, 3, 5, new int[] { 400, 200 }, 1);
+            File.WriteAllText(pathToData + @"somaset\network_untrained.json", network.Save());
+            //var network = new Perceptron(File.ReadAllText(pathToData + @"somaset\network_untrained.json"));
+            string path = pathToData + @"somaset\TrainData";
+
+            var trainData = DirectoryToData(path + "\\1", (int)((double)epochs / 2));
+            //trainData.AddRange(DirectoryToData(path + "\\0", (int)((double)epochs / 2)));
+            //trainData = trainData.Shuffle();
+            var trainData0 = DirectoryToData(path + "\\0", (int)((double)epochs / 2));
+            trainData = ListExtensions.OneByOne(trainData, trainData0);
+
+            var losses = Train(network, trainData, epochs, sizeOfPic);
+            //Console.WriteLine($"Train losses:");
+            //for (int i = 0; i < losses.Length; i++)
+            //{
+            //    Console.WriteLine($"{i}.\t train{trainData[i].ideal[0]}\t = {losses[i]}");
+            //}
+            //Console.WriteLine();
+
+            File.WriteAllText(pathToData + @"somaset\network.json", network.Save());
+
+            string pathTest = pathToData + @"somaset\TestData";
+            var testData1 = DirectoryToData(pathTest + "\\1", (int)((double)epochs / 80 * 20) / 2);
+            var testData0 = DirectoryToData(pathTest + "\\0", (int)((double)epochs / 80 * 20) / 2);
+            int all = testData1.Count + testData0.Count;
+            int success = 0;
+            int tp = 0, fp = 0, tn = 0, fn = 0;
+            for (int i = 0; i < testData1.Count; i++)
+            {
+                var testVector = PrepareData(testData1[i].picture, sizeOfPic);
+
+                var output = network.GetResult(testVector);
+                Console.WriteLine($"Expected: {1}, Actual: {output[0]}, loss = {network.LossFunction(testData1[i].ideal)}");
+                success += output[0] > 0.5 ? 1 : 0;
+                if (output[0] > 0.5)
+                {
+                    tp++;
+                }
+                else
+                {
+                    fn++;
+                }
+            }
+
+            for (int i = 0; i < testData0.Count; i++)
+            {
+                var testVector = PrepareData(testData0[i].picture, sizeOfPic);
+
+                var output = network.GetResult(testVector);
+
+                Console.WriteLine($"Expected: {0}, Actual: {output[0]}, loss = {network.LossFunction(testData0[i].ideal)}");
+                success += output[0] < 0.5 ? 1 : 0;
+                if (output[0] < 0.5)
+                {
+                    tn++;
+                }
+                else
+                {
+                    fp++;
+                }
+            }
+
+            Console.WriteLine($"Процент попадания: {(double)success / all * 100}");
+            Console.WriteLine($"Правильно положительные = {tp}");
+            Console.WriteLine($"Неправильно положительные = {fn}");
+            Console.WriteLine($"Правильно отрицательные = {tn}");
+            Console.WriteLine($"Неправильно отрицательные = {fp}");
+
+        }
+
+        private double[] Train(CNNet net, List<NNetData> trainingDatas, int epochs, int sizeOfPic)
+        {
+            double[] loss = new double[Math.Min(trainingDatas.Count, epochs)];
+            for (int i = 0; i < trainingDatas.Count && i < epochs; i++)
+            {
+                var trainVector = PrepareData(trainingDatas[i].picture, sizeOfPic);
+
+                var actual = net.GetResult(trainVector);
+
+                loss[i] = net.LossFunction(trainingDatas[i].ideal);
+                
+                if (loss[i] > 0.1)
+                {
+                    net.BackPropagation(trainingDatas[i].ideal);
+                }
+
+                var actual1 = net.GetResult(trainVector);
+                Console.WriteLine($"{i}.\t\tExpected - {trainingDatas[i].ideal[0]},\t\t Actual - {actual[0]:f4}, Loss - {loss[i]:f4}, ActualAfterBackProp = {actual1[0]:f4}");
+            }
+
+            return loss;
+        }
+
+        private List<NNetData> DirectoryToDataForCnn(string path, int epochs)
         {
             var dir = new DirectoryInfo(path);
             var files = dir.GetFiles();
