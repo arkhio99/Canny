@@ -6,7 +6,7 @@ using Newtonsoft.Json;
 
 namespace NeuralNet
 {
-    public class ConvolutionLayer 
+    public class ConvolutionLayer
     {
         public double[,,] Inputs { get; set; }
         public List<double[,,]> Filters { get; set; }
@@ -120,7 +120,7 @@ namespace NeuralNet
                 var dw = Convolution(dyForLayerF);
                 var dxTemp = ReverseConvolution(dy, Filters[f]);
 
-                Filters[f] = Filters[f].Plus(dw, Epsilon);
+                Filters[f] = Filters[f].Plus( dw, -Epsilon);
                 dx = dx.Plus(dxTemp);
             }
 
@@ -207,6 +207,11 @@ namespace NeuralNet
             return res;
         }
 
+        public double[,,] BackPropagation(double[,,] init)
+        {
+            return UpSample(init);
+        }
+
         /// <summary>
         /// Находит максимум в некотором кубе
         /// </summary>
@@ -258,15 +263,22 @@ namespace NeuralNet
         public ConvolutionLayer cl1 { get; private set; }
 
         /// <summary>
+        /// Первый слой пулинга
+        /// </summary>
+        public PoolingLayer pl1 { get; private set; }
+        int poolSize = 3;
+
+        /// <summary>
         /// Второй слой свёртки
         /// </summary>
         public ConvolutionLayer cl2 { get; private set; }
 
-        /// <summary>
-        /// Слой пулинга
-        /// </summary>
-        public PoolingLayer pl1 { get; private set; }
-        int poolSize = 3;
+        public PoolingLayer pl2 { get; private set; }
+
+        public ConvolutionLayer cl3 { get; private set; }
+
+        public PoolingLayer pl3 { get; private set; }
+
         private Func<double, double> _activation { get; set; }
         private Func<double, double> _difActivation { get; set; }
 
@@ -287,23 +299,34 @@ namespace NeuralNet
             int howFilters1 = 3,
             int howLayersOnFilter1 = 1,
             int sizeOfFilter1 = 5,
+            int sizeOfPool1 = 2,
             int howFilters2 = 5,
             int howLayersOnFilter2 = 3,
             int sizeOfFilter2 = 5,
+            int sizeOfPool2 = 2,
+            int howFilters3 = 3,
+            int howLayersOnFilter3 = 5,
+            int sizeOfFilter3 = 5,
+            int sizeOfPool3 = 2,
             int[] neuronsPerHiddenLayer = null,
             int howOutputs = 1)
         {
             ActivationType = type;
             SetActivationFunc(type);
-            var eps = 0.01;
+            var eps = 0.7;
 
-            var size_inp = (sizeOfPic - sizeOfFilter1 + 1 - sizeOfFilter2 + 1) / poolSize;
-            var layers_inp = 1 * howFilters1 / howLayersOnFilter2 * howFilters2;
+            var size_inp = ((((sizeOfPic - sizeOfFilter1 + 1) / sizeOfPool1 - sizeOfFilter2 + 1) / sizeOfPool2) - sizeOfFilter3 + 1) / sizeOfPool3;
+            var layers_inp = howFilters1 / howLayersOnFilter1 * howFilters2 / howLayersOnFilter2 * howFilters3 / howLayersOnFilter3;
+
+            if (neuronsPerHiddenLayer == null)
+            {
+                neuronsPerHiddenLayer = new int[] { 10, 10 };
+            }
 
             var neuronsPerLayer = neuronsPerHiddenLayer.ToList();
             neuronsPerLayer.Insert(0, size_inp * size_inp * layers_inp);
             neuronsPerLayer.Add(howOutputs);
-            perceptron = new Perceptron(type, neuronsPerLayer.ToArray(), false, eps , 0.005);
+            perceptron = new Perceptron(type, neuronsPerLayer.ToArray(), false, eps , 0.3);
 
             cl1 = new ConvolutionLayer();
             cl1.Epsilon = eps;
@@ -313,6 +336,8 @@ namespace NeuralNet
                 cl1.Filters.Add(RandomiseFilter(howLayersOnFilter1, sizeOfFilter1));
             }
 
+            pl1 = new PoolingLayer(1, sizeOfPool1);
+
             cl2 = new ConvolutionLayer();
             cl2.Epsilon = eps;
             cl2.Filters = new List<double[,,]>(howFilters2);
@@ -320,6 +345,18 @@ namespace NeuralNet
             {
                 cl2.Filters.Add(RandomiseFilter(howLayersOnFilter2, sizeOfFilter2));
             }
+
+            pl2 = new PoolingLayer(1, sizeOfPool2);
+
+            cl3 = new ConvolutionLayer();
+            cl3.Epsilon = eps;
+            cl3.Filters = new List<double[,,]>(howFilters3);
+            for (int i = 0; i < howFilters3; i++)
+            {
+                cl3.Filters.Add(RandomiseFilter(howLayersOnFilter3, sizeOfFilter3));
+            }
+
+            pl3 = new PoolingLayer(1, sizeOfPool3);
         }
 
         /// <summary>
@@ -330,8 +367,11 @@ namespace NeuralNet
         {
             var dict = JsonConvert.DeserializeObject<Dictionary<string, string>>(input);
             cl1 = JsonConvert.DeserializeObject<ConvolutionLayer>(dict["ConvolutionLayer1"]);
-            cl2 = JsonConvert.DeserializeObject<ConvolutionLayer>(dict["ConvolutionLayer2"]);
             pl1 = JsonConvert.DeserializeObject<PoolingLayer>(dict["PoolingLayer1"]);
+            cl2 = JsonConvert.DeserializeObject<ConvolutionLayer>(dict["ConvolutionLayer2"]);
+            pl2 = JsonConvert.DeserializeObject<PoolingLayer>(dict["PoolingLayer2"]);
+            cl3 = JsonConvert.DeserializeObject<ConvolutionLayer>(dict["ConvolutionLayer3"]);
+            pl3 = JsonConvert.DeserializeObject<PoolingLayer>(dict["PoolingLayer3"]);
             perceptron = Perceptron.FromJson(dict["perceptron"]);
             ActivationType = (ActivationFunctionType)Enum.Parse(ActivationType.GetType(), dict["ActivationType"]);
             SetActivationFunc(ActivationType);
@@ -347,8 +387,11 @@ namespace NeuralNet
             return JsonConvert.SerializeObject(new Dictionary<string, string> 
             {
                 { "ConvolutionLayer1", JsonConvert.SerializeObject(cl1) },
-                { "ConvolutionLayer2", JsonConvert.SerializeObject(cl2) },
                 { "PoolingLayer1", JsonConvert.SerializeObject(pl1) },
+                { "ConvolutionLayer2", JsonConvert.SerializeObject(cl2) },
+                { "PoolingLayer2", JsonConvert.SerializeObject(pl2) },
+                { "ConvolutionLayer3", JsonConvert.SerializeObject(cl3) },
+                { "PoolingLayer3", JsonConvert.SerializeObject(pl3) },
                 { "perceptron", perceptron.Save()},
                 { "ActivationType", ActivationType.ToString() },
                 { "poolSize", poolSize.ToString() },
@@ -363,25 +406,37 @@ namespace NeuralNet
         public double[] GetResult(double[,,] input)
         {
             cl1.Inputs = input;
-            List<double[,,]> inputOnCl2 = new List<double[,,]>();
+            List<double[,,]> inputOnPl1 = new List<double[,,]>();
             for (int f = 0; f < cl1.Filters.Count; f++)
             {
-                inputOnCl2.Add(Activate(cl1.GetResult(cl1.Filters[f])));
+                inputOnPl1.Add(Activate(cl1.GetResult(cl1.Filters[f])));
             }
 
-            cl2.Inputs = ListToArray(inputOnCl2);
-            
-            List<double[,,]> inputOnPl1 = new List<double[,,]>();
-            for (int f = 0; f < cl2.Filters.Count; f++)
-            {
-                inputOnPl1.Add(Activate(cl2.GetResult(cl2.Filters[f])));
-            }
-
-            pl1 = new PoolingLayer(1, 3);
             var outOnPl1 = pl1.GetResult(ListToArray(inputOnPl1));
             var activeFromPl1 = Activate(outOnPl1);
 
-            return perceptron.GetResult(activeFromPl1.ToVector(), outOnPl1.ToVector());            
+            cl2.Inputs = activeFromPl1;            
+            List<double[,,]> inputOnPl2 = new List<double[,,]>();
+            for (int f = 0; f < cl2.Filters.Count; f++)
+            {
+                inputOnPl2.Add(Activate(cl2.GetResult(cl2.Filters[f])));
+            }
+
+
+            var outOnPl2 = pl2.GetResult(ListToArray(inputOnPl2));
+            var activeFromPl2 = Activate(outOnPl2);
+
+            cl3.Inputs = activeFromPl2;
+            List<double[,,]> inputOnPl3 = new List<double[,,]>();
+            for (int f = 0; f < cl3.Filters.Count; f++)
+            {
+                inputOnPl3.Add(Activate(cl3.GetResult(cl3.Filters[f])));
+            }
+
+            var outOnPl3 = pl3.GetResult(ListToArray(inputOnPl3));
+            var activeFromPl3 = Activate(outOnPl3);
+
+            return perceptron.GetResult(activeFromPl3.ToVector(), outOnPl3.ToVector());            
         }
 
         /// <summary>
@@ -402,13 +457,16 @@ namespace NeuralNet
         public double[,,] BackPropagation(double[] ideal)
         {
             var deltasOnPercInp = perceptron.BackPropagation(ideal);
-            var deltaOnPl1Inp = pl1.UpSample(
+            var deltaOnPl3Inp = pl3.BackPropagation(
                 deltasOnPercInp.ToArray3(
-                    pl1.MaxPositions.GetLength(0) / pl1.HowLayers,
-                    pl1.MaxPositions.GetLength(1) / poolSize,
-                    pl1.MaxPositions.GetLength(2) / poolSize));
-            var deltaOnCl2Inp = cl2.BackPropagation(deltaOnPl1Inp);
-            var deltaOnCl1Inp = cl1.BackPropagation(deltaOnCl2Inp);
+                    pl3.MaxPositions.GetLength(0) / pl3.HowLayers,
+                    pl3.MaxPositions.GetLength(1) / pl3.PoolSize,
+                    pl3.MaxPositions.GetLength(2) / pl3.PoolSize));
+            var deltaOnCl3Inp = cl3.BackPropagation(deltaOnPl3Inp);
+            var deltaOnPl2Inp = pl2.BackPropagation(deltaOnCl3Inp);
+            var deltaOnCl2Inp = cl2.BackPropagation(deltaOnPl2Inp);
+            var deltaOnPl1Inp = pl1.BackPropagation(deltaOnCl2Inp);
+            var deltaOnCl1Inp = cl1.BackPropagation(deltaOnPl1Inp);
 
             return deltaOnCl1Inp;
         }

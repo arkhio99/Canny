@@ -154,7 +154,7 @@ namespace NeuralNet.Tests
             trainData.AddRange(DirectoryToData(path + "\\0", epochs / 100 * 80 / 2));
             trainData.Shuffle();
             
-            var losses = Train(network, trainData, epochs);
+            var losses = Train(ref network, trainData, epochs);
             File.WriteAllText(pathToData + @"somaset\network.json", network.Save());
         }
 
@@ -226,7 +226,7 @@ namespace NeuralNet.Tests
             trainData.AddRange(DirectoryToData(path + "\\0", epochs / 2).ToList());
             trainData = trainData.Shuffle();
 
-            var losses = Train(network, trainData, epochs);
+            var losses = Train(ref network, trainData, epochs);
             Console.WriteLine($"Train losses:");
             for (int i = 0; i < losses.Length; i++)
             {
@@ -285,7 +285,7 @@ namespace NeuralNet.Tests
 
         }
 
-        private double[] Train(Perceptron net, List<NNetData> trainingDatas, int epochs)
+        private double[] Train(ref Perceptron net, List<NNetData> trainingDatas, int epochs)
         {
             double[] loss = new double[Math.Min(trainingDatas.Count, epochs)];
             for (int i = 0; i < trainingDatas.Count && i < epochs; i++)

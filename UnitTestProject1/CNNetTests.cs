@@ -257,13 +257,21 @@ namespace NeuralNet.Tests
         public void CanSaveAndLoadCorrectly()
         {
             string toFile = pathToData + @"somaset\TrainData\1\im0002.jpg";
+            int sizeOfPic = 124;
+            CNNet net = new CNNet(ActivationFunctionType.Sigmoid, sizeOfPic,
+                5, 1, 5,
+                2,
+                5, 5, 5,
+                2,
+                3, 5, 5, 2,
+                new int[] { 100, 100 },
+                1);
 
-            CNNet network = new CNNet();
             var pic = JpegToData(toFile).picture;
-            var testVector = PrepareData(pic, 128);
-            var expected = network.GetResult(testVector);
+            var testVector = PrepareData(pic, 124);
+            var expected = net.GetResult(testVector);
 
-            File.WriteAllText(pathToData + @"somaset\CanSaveAndLoadCorrectly.json", network.Save());
+            File.WriteAllText(pathToData + @"somaset\CanSaveAndLoadCorrectly.json", net.Save());
 
             CNNet newnet = new CNNet(File.ReadAllText(pathToData + @"somaset\CanSaveAndLoadCorrectly.json"));
             var actual = newnet.GetResult(testVector);
@@ -274,11 +282,19 @@ namespace NeuralNet.Tests
         [TestMethod]
         public void CanBackProp()
         {
-            CNNet net = new CNNet();
+            int sizeOfPic = 124;
+            CNNet net = new CNNet(ActivationFunctionType.Sigmoid, sizeOfPic,
+                5, 1, 5,
+                2,
+                5, 5, 5,
+                2,
+                3, 5, 5, 2,
+                new int[] { 100, 100 },
+                1);
 
             string toFile = pathToData + @"somaset\TrainData\1\im0002.jpg";
             var pic = JpegToData(toFile).picture;
-            var testVector = PrepareData(pic, 128);
+            var testVector = PrepareData(pic, 124);
             var ideal = new double[] { 0.8 };
 
             var actual = net.GetResult(testVector);
@@ -294,12 +310,12 @@ namespace NeuralNet.Tests
         {
             var splited = path.Split('\\');
             double ideal = double.Parse(splited[^2]);
+            var idealAr = new double[2];
+            idealAr[0] = ideal == 1 ? 1 : 0;
+            idealAr[1] = ideal == 2 ? 1 : 0;
             return new NNetData
             {
-                ideal = new double[]
-                {
-                    Math.Abs(ideal) > 0.001 ? ideal : 0.001,
-                },
+                ideal = idealAr,
                 picture = new Bitmap(Image.FromFile(path)),
             };
         }
@@ -347,34 +363,35 @@ namespace NeuralNet.Tests
         [TestMethod]
         public void tempTest()
         {
-            int sizeOfPic = 65;
-            int epochs = 400;
+            int sizeOfPic = 124;
+            int epochs = 100;
 
-            var network = new CNNet(ActivationFunctionType.Sigmoid, sizeOfPic, 3, 1, 5, 5, 3, 5, new int[] { 400, 200 }, 1);
+            var network = new CNNet(ActivationFunctionType.Sigmoid, sizeOfPic, 
+                5, 1, 5, 
+                2,
+                5, 5, 5,
+                2,
+                3, 5, 5, 2,
+                new int[] { 800, 300, 100},
+                2);
             File.WriteAllText(pathToData + @"somaset\network_untrained.json", network.Save());
             //var network = new Perceptron(File.ReadAllText(pathToData + @"somaset\network_untrained.json"));
             string path = pathToData + @"somaset\TrainData";
 
-            var trainData = DirectoryToData(path + "\\1", (int)((double)epochs / 2));
-            //trainData.AddRange(DirectoryToData(path + "\\0", (int)((double)epochs / 2)));
-            //trainData = trainData.Shuffle();
-            var trainData0 = DirectoryToData(path + "\\0", (int)((double)epochs / 2));
-            trainData = ListExtensions.OneByOne(trainData, trainData0);
+            var trainData1 = DirectoryToData(path + "\\1", (int)((double)epochs /10 * 8 / 2));
+            trainData1.AddRange(DirectoryToData(path + "\\2", (int)((double)epochs / 2)));
+            trainData1 = trainData1.Shuffle();
+            //var trainData2 = DirectoryToData(path + "\\2", (int)((double)epochs / 2));
+            //var trainData = ListExtensions.OneByOne(trainData1, trainData2);
 
-            var losses = Train(network, trainData, epochs, sizeOfPic);
-            //Console.WriteLine($"Train losses:");
-            //for (int i = 0; i < losses.Length; i++)
-            //{
-            //    Console.WriteLine($"{i}.\t train{trainData[i].ideal[0]}\t = {losses[i]}");
-            //}
-            //Console.WriteLine();
+            var losses = Train(ref network, trainData1, epochs, sizeOfPic);
 
             File.WriteAllText(pathToData + @"somaset\network.json", network.Save());
 
             string pathTest = pathToData + @"somaset\TestData";
             var testData1 = DirectoryToData(pathTest + "\\1", (int)((double)epochs / 80 * 20) / 2);
-            var testData0 = DirectoryToData(pathTest + "\\0", (int)((double)epochs / 80 * 20) / 2);
-            int all = testData1.Count + testData0.Count;
+            var testData2 = DirectoryToData(pathTest + "\\2", (int)((double)epochs / 80 * 20) / 2);
+            int all = testData1.Count + testData2.Count;
             int success = 0;
             int tp = 0, fp = 0, tn = 0, fn = 0;
             for (int i = 0; i < testData1.Count; i++)
@@ -382,9 +399,9 @@ namespace NeuralNet.Tests
                 var testVector = PrepareData(testData1[i].picture, sizeOfPic);
 
                 var output = network.GetResult(testVector);
-                Console.WriteLine($"Expected: {1}, Actual: {output[0]}, loss = {network.LossFunction(testData1[i].ideal)}");
-                success += output[0] > 0.5 ? 1 : 0;
-                if (output[0] > 0.5)
+                Console.WriteLine($"Expected ({testData1[i].ideal[0]}, {testData1[i].ideal[1]}), Actual: ({output[0]:f6}, {output[1]:f6}) , loss = {network.LossFunction(testData1[i].ideal)}");
+                success += output[0] > output[1] ? 1 : 0;
+                if (output[0] > output[1])
                 {
                     tp++;
                 }
@@ -394,15 +411,15 @@ namespace NeuralNet.Tests
                 }
             }
 
-            for (int i = 0; i < testData0.Count; i++)
+            for (int i = 0; i < testData2.Count; i++)
             {
-                var testVector = PrepareData(testData0[i].picture, sizeOfPic);
+                var testVector = PrepareData(testData2[i].picture, sizeOfPic);
 
                 var output = network.GetResult(testVector);
 
-                Console.WriteLine($"Expected: {0}, Actual: {output[0]}, loss = {network.LossFunction(testData0[i].ideal)}");
-                success += output[0] < 0.5 ? 1 : 0;
-                if (output[0] < 0.5)
+                Console.WriteLine($"Expected ({testData2[i].ideal[0]}, {testData2[i].ideal[1]}), Actual: ({output[0]:f6}, {output[1]:f6}) , loss = {network.LossFunction(testData2[i].ideal)}");
+                success += output[0] < output[1] ? 1 : 0;
+                if (output[0] < output[1])
                 {
                     tn++;
                 }
@@ -420,7 +437,7 @@ namespace NeuralNet.Tests
 
         }
 
-        private double[] Train(CNNet net, List<NNetData> trainingDatas, int epochs, int sizeOfPic)
+        private double[] Train(ref CNNet net, List<NNetData> trainingDatas, int epochs, int sizeOfPic)
         {
             double[] loss = new double[Math.Min(trainingDatas.Count, epochs)];
             for (int i = 0; i < trainingDatas.Count && i < epochs; i++)
@@ -431,13 +448,15 @@ namespace NeuralNet.Tests
 
                 loss[i] = net.LossFunction(trainingDatas[i].ideal);
                 
-                if (loss[i] > 0.1)
+                if ((actual[0] > actual[1] && trainingDatas[i].ideal[0] > trainingDatas[i].ideal[1]) || (actual[0] < actual[1] && trainingDatas[i].ideal[0] < trainingDatas[i].ideal[1]))
+                { }
+                else
                 {
                     net.BackPropagation(trainingDatas[i].ideal);
                 }
 
                 var actual1 = net.GetResult(trainVector);
-                Console.WriteLine($"{i}.\t\tExpected - {trainingDatas[i].ideal[0]},\t\t Actual - {actual[0]:f4}, Loss - {loss[i]:f4}, ActualAfterBackProp = {actual1[0]:f4}");
+                Console.WriteLine($"{i}. Expected ({trainingDatas[i].ideal[0]}, {trainingDatas[i].ideal[1]}), Actual: ({actual[0]:f6}, {actual[1]:f6}), newActual: ({actual1[0]:f6}, {actual1[1]:f6}) , loss = {net.LossFunction(trainingDatas[i].ideal)}");
             }
 
             return loss;

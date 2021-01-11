@@ -11,8 +11,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NeuralNet.Tests", "UnitTest
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BitmapLibrary", "BitmapLibrary\BitmapLibrary.csproj", "{AECC7E0D-A162-4D5D-90BB-5240A27FA477}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Perceptron", "Perceptron\Perceptron.csproj", "{5FC9822E-407B-49C2-A5DD-37F102EEC9BA}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NeuralNetworks.Tests", "Perceptron.Tests\NeuralNetworks.Tests.csproj", "{1511B039-0604-4A4B-92CC-A5E5AD4A34AD}"
 EndProject
 Global
@@ -37,10 +35,6 @@ Global
 		{AECC7E0D-A162-4D5D-90BB-5240A27FA477}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AECC7E0D-A162-4D5D-90BB-5240A27FA477}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AECC7E0D-A162-4D5D-90BB-5240A27FA477}.Release|Any CPU.Build.0 = Release|Any CPU
-		{5FC9822E-407B-49C2-A5DD-37F102EEC9BA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{5FC9822E-407B-49C2-A5DD-37F102EEC9BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{5FC9822E-407B-49C2-A5DD-37F102EEC9BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{5FC9822E-407B-49C2-A5DD-37F102EEC9BA}.Release|Any CPU.Build.0 = Release|Any CPU
 		{1511B039-0604-4A4B-92CC-A5E5AD4A34AD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{1511B039-0604-4A4B-92CC-A5E5AD4A34AD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1511B039-0604-4A4B-92CC-A5E5AD4A34AD}.Release|Any CPU.ActiveCfg = Release|Any CPU
